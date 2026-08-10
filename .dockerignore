@@ -1,0 +1,53 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+.DS_Store
+Thumbs.db
+
+# Dependencies (rebuilt in Docker)
+node_modules
+vendor
+package-lock.json
+
+# Public (rebuilt)
+public/build
+public/hot
+
+# Storage (vide)
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Tests & docs
+tests
+phpunit.xml
+README.md
+docs/
+*.md
+
+# Logs
+*.log
+
+# Dumps SQL
+*.sql
+*.sql.gz
+*.dump
+dump_*
+
+# Outils locaux (INUTILES dans l'image Docker)
+cloudflared.exe
+tunnel.sh
+online.sh
+*.pdf
+fiducia-africa-erp/

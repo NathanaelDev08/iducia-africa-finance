@@ -1,0 +1,66 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
+
+return new class extends Migration
+{
+    /**
+     * Tables concernées : [table => [colonne_code, ancien_index, nouveau_index]]
+     * On transforme unique(code) en unique(company_id, code)
+     */
+    protected array $tables = [
+        'clients'            => ['code',  'clients_code_unique',           'clients_company_code_unique'],
+        'suppliers'          => ['code',  'suppliers_code_unique',         'suppliers_company_code_unique'],
+        'employees'          => ['matricule', 'employees_matricule_unique', 'employees_company_matricule_unique'],
+        'accounts'           => ['number','accounts_number_unique',        'accounts_company_chart_number_unique'],
+        'journals'           => ['code',  'journals_code_unique',          'journals_company_code_unique'],
+        'taxes'              => ['code',  'taxes_code_unique',             'taxes_company_code_unique'],
+        'sales_invoices'     => ['reference', 'sales_invoices_reference_unique', 'sales_invoices_company_reference_unique'],
+        'purchase_invoices'  => ['reference', 'purchase_invoices_reference_unique', 'purchase_invoices_company_reference_unique'],
+        'customer_payments'  => ['reference', 'customer_payments_reference_unique', 'customer_payments_company_reference_unique'],
+        'sales_orders'       => ['reference', 'sales_orders_reference_unique', 'sales_orders_company_reference_unique'],
+        'pay_items'          => ['code', 'pay_items_code_unique', 'pay_items_company_code_unique'],
+        'social_contributions' => ['code', 'social_contributions_code_unique', 'social_contributions_company_code_unique'],
+        'sequence_numbers'   => ['code', 'sequence_numbers_company_code_unique', 'sequence_numbers_company_code_unique_v2'],
+    ];
+
+    public function up(): void
+    {
+        $sm = DB::connection()->getDoctrineSchemaManager();
+
+        foreach ($this->tables as $table => [$col, $oldIdx, $newIdx]) {
+            if (!Schema::hasTable($table)) continue;
+            if (!Schema::hasColumn($table, $col)) continue;
+            if (!Schema::hasColumn($table, 'company_id')) continue;
+
+            try {
+                // Supprimer l'ancien index s'il existe
+                Schema::table($table, function (Blueprint $t) use ($oldIdx) {
+                    try { $t->dropIndex($oldIdx); } catch (\Throwable $e) {}
+                    try { $t->dropUnique($oldIdx); } catch (\Throwable $e) {}
+                });
+            } catch (\Throwable $e) {
+                // Ignorer les erreurs de drop
+            }
+
+            try {
+                // Créer le nouveau index composite
+                Schema::table($table, function (Blueprint $t) use ($col, $newIdx) {
+                    $t->unique(['company_id', $col], $newIdx);
+                });
+                echo "  ✓ {$table}.{$col} → unique(company_id, {$col})\n";
+            } catch (\Throwable $e) {
+                // Si déjà existant ou erreur, on continue
+                echo "  ⚠ {$table}.{$col} : " . substr($e->getMessage(), 0, 80) . "\n";
+            }
+        }
+    }
+
+    public function down(): void
+    {
+        // Rollback non nécessaire - pas de retour arrière souhaité
+    }
+};
