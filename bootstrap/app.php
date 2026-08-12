@@ -19,6 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'super.admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
+            'module' => \App\Http\Middleware\CheckModuleAccess::class,
+            'set_active_company' => \App\Http\Middleware\SetActiveCompany::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

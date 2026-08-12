@@ -265,8 +265,11 @@ function IntegrationTab({ payRuns }: { payRuns: PayRun[] }) {
 }
 
 function CreateModal({ onClose }: { onClose: () => void }) {
-    const [periodStart, setPeriodStart] = useState(new Date().toISOString().slice(0, 10));
-    const [periodEnd, setPeriodEnd] = useState('');
+    const defaultStart = new Date();
+    const defaultStartDate = defaultStart.toISOString().slice(0, 10);
+    const defaultEndDate = new Date(defaultStart.getFullYear(), defaultStart.getMonth() + 1, 0).toISOString().slice(0, 10);
+    const [periodStart, setPeriodStart] = useState(defaultStartDate);
+    const [periodEnd, setPeriodEnd] = useState(defaultEndDate);
     const [name, setName] = useState('');
     const [reference, setReference] = useState('');
     const [processing, setProcessing] = useState(false);

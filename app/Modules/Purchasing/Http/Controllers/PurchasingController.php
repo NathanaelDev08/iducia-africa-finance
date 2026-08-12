@@ -12,6 +12,11 @@ use Inertia\Inertia;
 
 class PurchasingController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('module:purchasing');
+    }
+
     protected function company(Request $request): Company
     {
         return $request->attributes->get('company') ?? Company::first();

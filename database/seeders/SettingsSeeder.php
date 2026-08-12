@@ -7,6 +7,8 @@ use App\Modules\Settings\Models\SequenceNumber;
 use App\Modules\Settings\Models\Setting;
 use App\Modules\Settings\Models\Tax;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class SettingsSeeder extends Seeder
 {
@@ -19,11 +21,56 @@ class SettingsSeeder extends Seeder
                 ['code' => 'AIRSI', 'name' => 'AIRSI', 'type' => 'withholding', 'rate' => 7.5, 'account_number' => '4425', 'is_default' => false, 'description' => 'Acompte IR sur revenus salariaux'],
                 ['code' => 'PATENTE', 'name' => 'Patente', 'type' => 'other', 'rate' => 0, 'account_number' => '6411', 'is_default' => false, 'description' => 'Contribution des patentes'],
             ];
+
+            $hasRateColumn = Schema::hasColumn('taxes', 'rate');
+            $hasAccountColumn = Schema::hasColumn('taxes', 'account_number');
+            $hasDefaultColumn = Schema::hasColumn('taxes', 'is_default');
+            $hasDescriptionColumn = Schema::hasColumn('taxes', 'description');
+            $hasTaxRatesTable = Schema::hasTable('tax_rates');
+
             foreach ($taxes as $t) {
-                Tax::updateOrCreate(
+                $taxData = [
+                    'company_id' => $company->id,
+                    'code' => $t['code'],
+                    'name' => $t['name'],
+                    'type' => $t['type'],
+                ];
+
+                if (Schema::hasColumn('taxes', 'scope')) {
+                    $taxData['scope'] = 'company';
+                }
+                if (Schema::hasColumn('taxes', 'is_active')) {
+                    $taxData['is_active'] = true;
+                }
+                if ($hasAccountColumn) {
+                    $taxData['account_number'] = $t['account_number'];
+                }
+                if ($hasDefaultColumn) {
+                    $taxData['is_default'] = $t['is_default'];
+                }
+                if ($hasDescriptionColumn) {
+                    $taxData['description'] = $t['description'];
+                }
+                if ($hasRateColumn) {
+                    $taxData['rate'] = $t['rate'];
+                }
+
+                $tax = Tax::updateOrCreate(
                     ['company_id' => $company->id, 'code' => $t['code']],
-                    $t + ['effective_from' => now()->startOfYear()->toDateString()]
+                    $taxData
                 );
+
+                if (! $hasRateColumn && $hasTaxRatesTable) {
+                    DB::table('tax_rates')->updateOrInsert(
+                        ['tax_id' => $tax->id, 'effective_from' => now()->startOfYear()->toDateString()],
+                        [
+                            'rate' => $t['rate'],
+                            'is_active' => true,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]
+                    );
+                }
             }
 
             // Séquences de numérotation

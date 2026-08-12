@@ -1,9 +1,11 @@
 import ErpLayout from '@/Layouts/ErpLayout';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 
 interface Props {
     company?: any;
     metrics?: any;
+    erpData?: any;
+    generated_at?: string;
     recentInvoices?: any[];
     recentReceipts?: any[];
     recentPurchases?: any[];
@@ -29,43 +31,69 @@ const statusBadge = (s: string) => {
 export default function Dashboard({ 
     company = {}, 
     metrics = {}, 
+    erpData = null,
+    generated_at,
     recentInvoices = [], 
     recentReceipts = [], 
     recentPurchases = [], 
     alerts = [] 
 }: Props) {
-    // Valeurs par défaut pour metrics
+    const payload = erpData || { company, metrics, alerts, generated_at };
+    const effectiveCompany = payload.company || company || {};
+    const effectiveMetrics = payload.metrics || metrics || {};
+    const effectiveAlerts = payload.alerts || alerts || [];
+    const updatedAt = generated_at || payload.generated_at || new Date().toISOString();
+
     const m = {
-        revenue: metrics?.revenue || 0,
-        expenses: metrics?.expenses || 0,
-        cash: metrics?.cash || 0,
-        clients: metrics?.clients || 0,
-        suppliers: metrics?.suppliers || 0,
-        invoices_pending: metrics?.invoices_pending || 0,
-        invoices_pending_total: metrics?.invoices_pending_total || 0,
-        receipts_count: metrics?.receipts_count || 0,
-        receipts_total: metrics?.receipts_total || 0,
-        employees: metrics?.employees || 0,
-        payslips: metrics?.payslips || 0,
+        revenue: effectiveMetrics.revenue_year ?? effectiveMetrics.revenue ?? 0,
+        expenses: effectiveMetrics.expenses_year ?? effectiveMetrics.expenses ?? 0,
+        cash: effectiveMetrics.treasury ?? effectiveMetrics.cash ?? 0,
+        clients: effectiveMetrics.clients ?? 0,
+        suppliers: effectiveMetrics.suppliers ?? 0,
+        invoices_pending: effectiveMetrics.invoices_pending ?? metrics?.invoices_pending ?? 0,
+        invoices_pending_total: effectiveMetrics.invoices_pending_total ?? metrics?.invoices_pending_total ?? 0,
+        receipts_count: effectiveMetrics.receipts_count ?? 0,
+        receipts_total: effectiveMetrics.receipts_total ?? 0,
+        employees: effectiveMetrics.active_employees ?? effectiveMetrics.employees ?? 0,
+        payslips: effectiveMetrics.payslips ?? 0,
+        receivables: effectiveMetrics.receivables ?? null,
+        payables: effectiveMetrics.payables ?? null,
+        net_result: effectiveMetrics.net_result_year ?? null,
     };
 
     const cards = [
-        { label: "Chiffre d'affaires HT", value: fmt(m.revenue) + ' F', border: 'border-green-500', color: 'text-green-600' },
-        { label: 'Achats / Dépenses HT', value: fmt(m.expenses) + ' F', border: 'border-red-500', color: 'text-red-600' },
-        { label: 'Trésorerie (classe 5)', value: fmt(m.cash) + ' F', border: 'border-blue-500', color: 'text-blue-600' },
+        { label: "Chiffre d'affaires HT (année)", value: fmt(m.revenue) + ' F', border: 'border-green-500', color: 'text-green-600' },
+        { label: 'Achats / Dépenses HT (année)', value: fmt(m.expenses) + ' F', border: 'border-red-500', color: 'text-red-600' },
+        { label: 'Trésorerie', value: fmt(m.cash) + ' F', border: 'border-blue-500', color: 'text-blue-600' },
         { label: 'Factures en attente', value: m.invoices_pending + ' (' + fmt(m.invoices_pending_total) + ' F)', border: 'border-amber-500', color: 'text-amber-600' },
         { label: 'Reçus encaissés', value: m.receipts_count + ' (' + fmt(m.receipts_total) + ' F)', border: 'border-indigo-500', color: 'text-indigo-600' },
         { label: 'Employés actifs', value: String(m.employees), border: 'border-purple-500', color: 'text-purple-600' },
+        ...(m.receivables !== null ? [{ label: 'Créances clients', value: fmt(m.receivables) + ' F', border: 'border-cyan-500', color: 'text-cyan-600' }] : []),
+        ...(m.payables !== null ? [{ label: 'Dettes fournisseurs', value: fmt(m.payables) + ' F', border: 'border-slate-500', color: 'text-slate-600' }] : []),
     ];
+
+    const refreshDashboard = () => {
+        router.get(route('dashboard'), {}, { preserveState: true, preserveScroll: true, replace: true });
+    };
 
     return (
         <ErpLayout>
             <Head title="Tableau de bord" />
             <div className="py-6">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="mb-6">
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">📊 {company?.name || 'Tableau de bord'}</h1>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Vue d'ensemble : facturation, encaissements, dépenses et trésorerie</p>
+                    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">📊 {effectiveCompany?.name || 'Tableau de bord'}</h1>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Vue d'ensemble : facturation, encaissements, dépenses et trésorerie</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Données mises à jour le {new Date(updatedAt).toLocaleString('fr-FR')}</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={refreshDashboard}
+                            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                        >
+                            ↻ Rafraîchir
+                        </button>
                     </div>
 
                     {/* ALERTES */}

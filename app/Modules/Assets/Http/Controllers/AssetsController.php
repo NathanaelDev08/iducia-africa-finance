@@ -11,6 +11,11 @@ use Inertia\Inertia;
 
 class AssetsController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('module:assets');
+    }
+
     protected function company(Request $request): Company
     { return $request->attributes->get('company') ?? Company::first(); }
 

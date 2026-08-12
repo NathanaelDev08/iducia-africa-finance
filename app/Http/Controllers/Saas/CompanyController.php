@@ -11,6 +11,11 @@ use Inertia\Response;
 
 class CompanyController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('module:settings');
+    }
+
     public function index(Request $request): Response
     {
         $companies = $request->user()

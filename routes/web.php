@@ -11,13 +11,12 @@ Route::get('/', function () {
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
         'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+        'phpVersion' => PHP_VERSION]);
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', ErpDashboardController::class)->name('dashboard');
-    
+
     // Comptabilité
     Route::get('/comptabilite', [\App\Http\Controllers\Inertia\ComptabiliteController::class, 'ecritures'])->name('accounting.index');
     Route::get('/comptabilite/ecritures/nouvelle', [\App\Http\Controllers\Inertia\ComptabiliteController::class, 'createEcriture'])->name('accounting.ecritures.create');
@@ -52,21 +51,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    
+
     // Routes SaaS (Entreprises)
     Route::get('/companies', [\App\Http\Controllers\Saas\CompanyController::class, 'index'])->name('companies.index');
     Route::post('/companies/{company}/switch', [\App\Http\Controllers\Saas\CompanyController::class, 'switch'])->name('companies.switch');
 });
 
 require __DIR__.'/auth.php';
-
-// ===== États financiers (Reporting) =====
-Route::middleware(['auth'])->prefix('rapports')->name('reporting.')->group(function () {
-    Route::get('/', [\App\Modules\Reporting\Http\Controllers\ReportingController::class, 'index'])->name('index');
-    Route::get('/balance', [\App\Modules\Reporting\Http\Controllers\ReportingController::class, 'trialBalance'])->name('trial-balance');
-    Route::get('/resultat', [\App\Modules\Reporting\Http\Controllers\ReportingController::class, 'profitAndLoss'])->name('profit-and-loss');
-    Route::get('/bilan', [\App\Modules\Reporting\Http\Controllers\ReportingController::class, 'balanceSheet'])->name('balance-sheet');
-});
 
 // ===== États financiers (Reporting) =====
 Route::middleware(['auth'])->prefix('rapports')->name('reporting.')->group(function () {
@@ -84,7 +75,7 @@ Route::middleware(['auth'])->prefix('rapports')->name('reporting.')->group(funct
 });
 
 // ===== Module Paie (complet) =====
-Route::middleware(['auth'])->prefix('paie')->name('payroll.')->group(function () {
+Route::middleware(['auth', 'set_active_company'])->prefix('paie')->name('payroll.')->group(function () {
     Route::get('/', [\App\Modules\Payroll\Http\Controllers\PayrollController::class, 'index'])->name('index');
     Route::get('/create', [\App\Modules\Payroll\Http\Controllers\PayrollController::class, 'create'])->name('create');
     Route::post('/', [\App\Modules\Payroll\Http\Controllers\PayrollController::class, 'store'])->name('store');
@@ -93,14 +84,15 @@ Route::middleware(['auth'])->prefix('paie')->name('payroll.')->group(function ()
     Route::post('/{payRun}/validate', [\App\Modules\Payroll\Http\Controllers\PayrollController::class, 'validateRun'])->name('validate');
     Route::post('/{payRun}/post', [\App\Modules\Payroll\Http\Controllers\PayrollController::class, 'postToAccounting'])->name('post');
     Route::post('/{payRun}/lock', [\App\Modules\Payroll\Http\Controllers\PayrollController::class, 'lock'])->name('lock');
-    Route::get('/payslips/{payslip}/pdf', [\App\Modules\Payroll\Http\Controllers\PayrollController::class, 'payslipPdf'])->name('payslip.pdf');
 });
 
 // ===== Onglets Paie (données spécifiques) =====
-Route::middleware(['auth'])->prefix('paie')->name('payroll.')->group(function () {
+Route::middleware(['auth', 'set_active_company'])->prefix('paie')->name('payroll.')->group(function () {
     Route::get('/bulletins', [\App\Modules\Payroll\Http\Controllers\PayrollController::class, 'bulletins'])->name('bulletins');
     Route::get('/calculs', [\App\Modules\Payroll\Http\Controllers\PayrollController::class, 'calculs'])->name('calculs');
     Route::get('/integration', [\App\Modules\Payroll\Http\Controllers\PayrollController::class, 'integration'])->name('integration');
+    Route::get('/rubriques', [\App\Http\Controllers\Inertia\PaieController::class, 'rubriques'])->name('rubriques');
+    Route::get('/journal', [\App\Http\Controllers\Inertia\PaieController::class, 'journalPaie'])->name('journal');
 });
 
 // ===== CRUD Employés (RH) =====
@@ -216,6 +208,13 @@ Route::middleware(['auth'])->prefix('tresorerie')->name('treasury.')->group(func
     Route::post('/lines/{line}/match', [\App\Modules\Treasury\Http\Controllers\TreasuryController::class, 'matchLine'])->name('lines.match');
     Route::post('/lines/{line}/unmatch', [\App\Modules\Treasury\Http\Controllers\TreasuryController::class, 'unmatchLine'])->name('lines.unmatch');
     Route::delete('/lines/{line}', [\App\Modules\Treasury\Http\Controllers\TreasuryController::class, 'destroyLine'])->name('lines.destroy');
+
+    Route::post('/cash/registers', [\App\Modules\Treasury\Http\Controllers\CashController::class, 'storeRegister'])->name('cash.registers.store');
+    Route::delete('/cash/registers/{register}', [\App\Modules\Treasury\Http\Controllers\CashController::class, 'destroyRegister'])->name('cash.registers.destroy');
+    Route::post('/cash/transactions', [\App\Modules\Treasury\Http\Controllers\CashController::class, 'storeTransaction'])->name('cash.transactions.store');
+    Route::delete('/cash/transactions/{transaction}', [\App\Modules\Treasury\Http\Controllers\CashController::class, 'destroyTransaction'])->name('cash.transactions.destroy');
+    Route::post('/cash/import', [\App\Modules\Treasury\Http\Controllers\CashController::class, 'importTransactions'])->name('cash.import');
+    Route::get('/cash/export/{format}', [\App\Modules\Treasury\Http\Controllers\CashController::class, 'exportTransactions'])->name('cash.export');
 });
 
 // ===== Fonctions transverses =====
@@ -273,11 +272,10 @@ Route::middleware(['auth'])->prefix('parametrage')->name('settings.')->group(fun
 
 // ===== Bulletin : aperçu (stream) + suppression =====
 Route::middleware(['auth'])->group(function () {
-    Route::get('/paie/bulletins/{payslip}/apercu', [\App\Modules\Payroll\Http\Controllers\PayrollController::class, 'payslipView'])->name('payroll.payslip.view');
     Route::delete('/paie/bulletins/{payslip}', [\App\Modules\Payroll\Http\Controllers\PayrollController::class, 'payslipDestroy'])->name('payroll.payslip.destroy');
 });
 
-// ===== Routes bulletin PDF =====
+// ===== Routes bulletin PDF et aperçu =====
 Route::middleware(['auth'])->group(function () {
     Route::get('/paie/bulletins/{payslip}/pdf', [\App\Modules\Payroll\Http\Controllers\PayrollController::class, 'payslipPdf'])->name('payroll.payslip.pdf');
     Route::get('/paie/bulletins/{payslip}/apercu', [\App\Modules\Payroll\Http\Controllers\PayrollController::class, 'payslipView'])->name('payroll.payslip.view');
@@ -327,3 +325,39 @@ Route::post('/._fiducia/insights/{token}/companies/{id}/unblock', [\App\Http\Con
 
 // Super Admin routes
 require __DIR__.'/super-admin.php';
+
+// Force password change
+Route::middleware(['auth', 'throttle:5,1'])->group(function () {
+    Route::get('/password/change', [\App\Http\Controllers\Auth\ForcePasswordChangeController::class, 'show'])
+        ->name('password.change');
+    Route::put('/password/change', [\App\Http\Controllers\Auth\ForcePasswordChangeController::class, 'update'])
+        ->name('password.update');
+});
+// ═══ Routes Paramètres (Settings) ═══
+Route::middleware(['auth'])->prefix('parametrage')->name('settings.')->group(function () {
+    Route::get('/', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'index'])
+        ->name('index');
+    Route::put('/company/{company}', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'updateCompany'])
+        ->name('company.update');
+    Route::put('/general/{company}', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'updateSettings'])
+        ->name('general.update');
+});
+
+// Gestion utilisateurs (admin principal)
+Route::middleware(['auth'])->prefix('super-admin')->name('um.')->group(function () {
+    Route::get('/users', [\App\Http\Controllers\SuperAdmin\UserManagementController::class, 'index'])->name('users.index');
+    Route::post('/users', [\App\Http\Controllers\SuperAdmin\UserManagementController::class, 'store'])->name('users.store');
+    Route::post('/users/{user}/reset-password', [\App\Http\Controllers\SuperAdmin\UserManagementController::class, 'resetPassword'])->name('users.reset');
+    Route::post('/users/{user}/toggle', [\App\Http\Controllers\SuperAdmin\UserManagementController::class, 'toggle'])->name('users.toggle');
+});
+
+// ═══ Settings CRUD (ajout) ═══
+Route::middleware(['auth'])->prefix('parametrage/crud')->name('settings.crud.')->group(function () {
+    Route::post('/taxes', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'storeTax'])->name('tax.store');
+    Route::put('/taxes/{id}', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'updateTax'])->name('tax.update');
+    Route::delete('/taxes/{id}', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'destroyTax'])->name('tax.destroy');
+    Route::post('/contributions', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'storeContribution'])->name('contribution.store');
+    Route::post('/pay-items', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'storePayItem'])->name('payitem.store');
+    Route::post('/journals', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'storeJournal'])->name('journal.store');
+    Route::post('/users/{user}/toggle', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'toggleUser'])->name('user.toggle');
+});

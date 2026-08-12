@@ -1,81 +1,137 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Reçu {{ $doc['number'] }}</title>
-<style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    @page { size: A4; margin: 12mm; }
-    body { font-family: DejaVu Sans, sans-serif; font-size: 10px; color: #111; }
-    table { border-collapse: collapse; width: 100%; }
-</style></head>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>Reçu {{ $doc['number'] }}</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        @page { size: A4; margin: 8mm; }
+        html, body { background: #f4f6f8; }
+        body { font-family: DejaVu Sans, sans-serif; font-size: 10px; color: #1d1d1d; padding: 0; }
+        .page { width:100%; min-height:277mm; padding: 10mm; background:#fff; }
+        table { border-collapse: collapse; width: 100%; }
+        .header-table td { vertical-align: top; }
+        .company-name { font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px; }
+        .company-info { font-size: 8.8px; color: #475569; line-height: 1.4; }
+        .title { font-size: 18px; font-weight: 800; color: #166534; letter-spacing: 0.8px; margin-bottom: 4px; }
+        .subtitle { font-size: 9px; color: #475569; line-height: 1.4; }
+        .meta { text-align: right; font-size: 9px; color: #475569; }
+        .meta .ref { font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px; }
+        .section-title { font-size: 9.5px; font-weight: 700; color: #166534; margin-bottom: 6px; }
+        .card { border: 1px solid #d1d5db; border-radius: 6px; overflow: hidden; }
+        .card td { padding: 7px 8px; }
+        .card tr + tr td { border-top: 1px solid #e5e7eb; }
+        .label { width: 38%; font-weight: 700; color: #166534; }
+        .value { color: #111827; }
+        .highlight { background: #ecfdf5; color: #166534; font-weight: 700; }
+        .signatures { width: 100%; margin-top: 12px; }
+        .sign-table { width: 100%; border-collapse: collapse; }
+        .sign-table td { width: 50%; padding: 8px; vertical-align: top; border: 1px solid #d1d5db; border-radius: 6px; }
+        .sign-box { font-size: 9px; color: #475569; min-height: 38mm; }
+        .sign-box strong { display: block; margin-bottom: 6px; color: #111827; }
+        .footer { margin-top: 12px; font-size: 8px; color: #64748b; text-align: center; line-height: 1.4; }
+    </style>
+</head>
 <body>
 @php
     $fmt = fn($v) => number_format((float)$v, 2, ',', ' ');
     $fdate = fn($d) => $d ? \Carbon\Carbon::parse($d)->format('d/m/Y') : '—';
     $currency = $company->currency ?? 'FCFA';
+    $companyAddress = trim(implode(', ', array_filter([
+        $company->address ?? null,
+        $company->city ?? null,
+        $company->country ?? null,
+    ])));
+    $companyContact = trim(implode(' • ', array_filter([
+        $company->phone ?? null,
+        $company->email ?? null,
+    ])));
 @endphp
 
-<!-- EN-TÊTE -->
-<table style="margin-bottom:10mm;">
-    <tr>
-        <td style="width:30%; vertical-align:top; border:none;">
-            @if($logo)<img src="{{ $logo }}" style="height:45px; width:auto;" />@endif
-        </td>
-        <td style="width:40%; text-align:center; vertical-align:top; border:none;">
-            <div style="font-size:16px; font-weight:bold; letter-spacing:2px; color:#2d6a4f;">REÇU DE PAIEMENT</div>
-            <div style="font-size:10px; margin-top:2px;">N° <strong>{{ $doc['number'] }}</strong></div>
-        </td>
-        <td style="width:30%; text-align:right; vertical-align:top; border:none;">
-            @if($companyLogo)<img src="{{ $companyLogo }}" style="height:38px; width:auto;" /><br>@endif
-            <div style="font-size:9px; font-weight:bold; color:#1a3a6a;">{{ $company->name }}</div>
-        </td>
-    </tr>
-</table>
+<div class="page">
+    <table class="header-table" style="margin-bottom:8px;">
+        <tr>
+            <td style="width:50%;">
+                @if($logo)
+                    <img src="{{ $logo }}" alt="Logo" style="max-height:42px; width:auto; display:block; margin-bottom:6px;">
+                @endif
+                <div class="company-name">{{ $company->name }}</div>
+                <div class="company-info">
+                    @if($companyAddress){{ $companyAddress }}<br>@endif
+                    @if($companyContact){{ $companyContact }}@endif
+                </div>
+            </td>
+            <td class="meta" style="width:50%;">
+                <div class="ref">Réf. {{ $doc['number'] }}</div>
+                <div>Date paiement : {{ $fdate($doc['date']) }}</div>
+                <div>Émis le : {{ now()->format('d/m/Y') }}</div>
+            </td>
+        </tr>
+    </table>
 
-<!-- CORPS DU REÇU -->
-<table style="border:2px solid #2d6a4f; border-radius:4px;">
-    <tr>
-        <td style="padding:4mm; border-bottom:1px solid #ccc; width:40%; font-weight:bold; color:#2d6a4f;">Date du paiement</td>
-        <td style="padding:4mm;">{{ $fdate($doc['date']) }}</td>
-    </tr>
-    <tr>
-        <td style="padding:4mm; border-bottom:1px solid #ccc; font-weight:bold; color:#2d6a4f;">{{ $doc['source'] === 'client' ? 'Reçu de' : 'Versé à' }}</td>
-        <td style="padding:4mm; font-weight:bold;">{{ $doc['party_name'] }}</td>
-    </tr>
-    @if($doc['invoice_ref'])
-    <tr>
-        <td style="padding:4mm; border-bottom:1px solid #ccc; font-weight:bold; color:#2d6a4f;">Au titre de la facture</td>
-        <td style="padding:4mm;">{{ $doc['invoice_ref'] }}</td>
-    </tr>
-    @endif
-    <tr>
-        <td style="padding:4mm; border-bottom:1px solid #ccc; font-weight:bold; color:#2d6a4f;">Mode de paiement</td>
-        <td style="padding:4mm;">{{ $doc['method'] }}</td>
-    </tr>
-    <tr>
-        <td style="padding:5mm; background:#eaf6ee; font-weight:bold; color:#2d6a4f; font-size:11px;">MONTANT ENCAISSÉ</td>
-        <td style="padding:5mm; background:#eaf6ee; font-weight:bold; font-size:13px; color:#2d6a4f;">{{ $fmt($doc['amount']) }} {{ $currency }}</td>
-    </tr>
-    @if($doc['restant'] !== null)
-    <tr>
-        <td style="padding:4mm; font-weight:bold; color:#b8860b;">Restant dû sur la facture</td>
-        <td style="padding:4mm; font-weight:bold;">{{ $fmt(max(0, $doc['restant'])) }} {{ $currency }}</td>
-    </tr>
-    @endif
-</table>
+    <div style="margin-bottom:10px;">
+        <div class="title">REÇU DE PAIEMENT</div>
+        <div class="subtitle">Document officiel de validation du règlement</div>
+    </div>
 
-<!-- SIGNATURES -->
-<table style="margin-top:15mm;">
-    <tr>
-        <td style="width:48%; border:1px solid #999; height:30mm; vertical-align:top; padding:3mm; font-size:9px;">
-            <strong>Signature du {{ $doc['source'] === 'client' ? 'client' : 'fournisseur' }}</strong>
-        </td>
-        <td style="width:4%; border:none;"></td>
-        <td style="width:48%; border:1px solid #999; height:30mm; vertical-align:top; padding:3mm; font-size:9px;">
-            <strong>Pour {{ $company->name }} — Signature et cachet</strong>
-        </td>
-    </tr>
-</table>
+    <div class="section">
+        <div class="section-title">Informations de paiement</div>
+        <table class="card">
+            <tr>
+                <td class="label">{{ $doc['source'] === 'client' ? 'Reçu de' : 'Versé à' }}</td>
+                <td class="value">{{ $doc['party_name'] }}</td>
+            </tr>
+            <tr>
+                <td class="label">Mode de paiement</td>
+                <td class="value">{{ $doc['method'] }}</td>
+            </tr>
+            @if($doc['invoice_ref'])
+            <tr>
+                <td class="label">Facture liée</td>
+                <td class="value">{{ $doc['invoice_ref'] }}</td>
+            </tr>
+            @endif
+            <tr>
+                <td class="label">Montant encaissé</td>
+                <td class="value highlight">{{ $fmt($doc['amount']) }} {{ $currency }}</td>
+            </tr>
+            @if($doc['restant'] !== null)
+            <tr>
+                <td class="label">Solde restant</td>
+                <td class="value">{{ $fmt(max(0, $doc['restant'])) }} {{ $currency }}</td>
+            </tr>
+            @endif
+        </table>
+    </div>
 
-<div style="margin-top:10mm; font-size:7.5px; color:#666; text-align:center;">
-    Ce reçu libère le débiteur à concurrence du montant indiqué. — Document généré par FIDUCIA ERP le {{ now()->format('d/m/Y à H:i') }}
+    <div class="signatures">
+        <table class="sign-table">
+            <tr>
+                <td>
+                    <div class="sign-box">
+                        <strong>Signature {{ $doc['source'] === 'client' ? 'client' : 'fournisseur' }}</strong>
+                        Nom :<br><br>
+                        Date :<br><br>
+                        Signature :
+                    </div>
+                </td>
+                <td>
+                    <div class="sign-box">
+                        <strong>Signature pour {{ $company->name }}</strong>
+                        Nom :<br><br>
+                        Date :<br><br>
+                        Cachet / Signature :
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="footer">
+        Ce reçu atteste du paiement indiqué et libère le débiteur à concurrence du montant versé.
+        <br>Document généré par FIDUCIA ERP le {{ now()->format('d/m/Y à H:i') }}.
+    </div>
 </div>
-</body></html>
+</body>
+</html>
+

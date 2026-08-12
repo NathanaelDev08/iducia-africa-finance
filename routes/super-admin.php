@@ -29,3 +29,21 @@ Route::middleware(['auth', 'super.admin'])->prefix('super-admin')->name('super-a
     Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
 });
+
+// Gestion utilisateurs (remplace l'ancien UserController)
+Route::prefix('users')->name('users.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\SuperAdmin\UserManagementController::class, 'index'])->name('index');
+    Route::get('/create', [\App\Http\Controllers\SuperAdmin\UserManagementController::class, 'create'])->name('create');
+    Route::post('/', [\App\Http\Controllers\SuperAdmin\UserManagementController::class, 'store'])->name('store');
+    Route::post('/{user}/reset-password', [\App\Http\Controllers\SuperAdmin\UserManagementController::class, 'resetPassword'])->name('reset-password');
+    Route::post('/{user}/toggle', [\App\Http\Controllers\SuperAdmin\UserManagementController::class, 'toggleActive'])->name('toggle');
+});
+
+// Gestion utilisateurs (remplace l'ancien UserController)
+Route::prefix('users')->name('users.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\SuperAdmin\UserManagementController::class, 'index'])->name('index');
+    Route::get('/create', [\App\Http\Controllers\SuperAdmin\UserManagementController::class, 'create'])->name('create');
+    Route::post('/', [\App\Http\Controllers\SuperAdmin\UserManagementController::class, 'store'])->name('store');
+    Route::post('/{user}/reset-password', [\App\Http\Controllers\SuperAdmin\UserManagementController::class, 'resetPassword'])->name('reset-password');
+    Route::post('/{user}/toggle', [\App\Http\Controllers\SuperAdmin\UserManagementController::class, 'toggleActive'])->name('toggle');
+});

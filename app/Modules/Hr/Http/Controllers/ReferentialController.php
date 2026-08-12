@@ -13,6 +13,11 @@ use Inertia\Inertia;
 
 class ReferentialController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('module:hr');
+    }
+
     protected function company(Request $request): Company
     {
         return $request->attributes->get('company') ?? Company::first();

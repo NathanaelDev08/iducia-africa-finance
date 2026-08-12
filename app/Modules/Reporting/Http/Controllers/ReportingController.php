@@ -10,6 +10,11 @@ use Inertia\Inertia;
 
 class ReportingController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('module:reports');
+    }
+
     protected function company(Request $request): Company
     {
         return $request->attributes->get('company') ?? Company::first();

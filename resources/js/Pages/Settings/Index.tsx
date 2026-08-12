@@ -1,715 +1,611 @@
-import ErpLayout from '@/Layouts/ErpLayout';
-import { Head, router, usePage } from '@inertiajs/react';
-import { FormEvent, ReactNode, useEffect, useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import SettingsCrud from './SettingsCrud';
+import { useState } from 'react'; // Add this import
+import AuthenticatedLayout from '@/Layouts/ErpLayout';
+import { Head, router, useForm } from '@inertiajs/react';
 
-interface Tax {
-    id: number;
-    code: string;
-    name: string;
-    type: string;
-    rate: number;
-    account_number: string | null;
-    is_active: boolean;
-    effective_from: string | null;
-    description: string | null;
-}
+export default function SettingsIndex(props: any) {
+    const {
+        company, tab, menu,
+        users = [], modules = [], taxes = [], contributions = [], pay_items = [],
+        journals = [], charts = [], settings = {},
+    } = props;
 
-interface SequenceRow {
-    id: number;
-    code: string;
-    name: string;
-    prefix: string;
-    next_number: number;
-    format: string;
-}
-
-interface Rate {
-    id: number;
-    company_id: number | null;
-    currency_code: string;
-    currency_name: string | null;
-    rate_to_base: number;
-    effective_from: string;
-    is_active: boolean;
-}
-
-interface UserRow {
-    id: number;
-    name: string;
-    email: string;
-    companies: number[];
-}
-
-interface CompanyRow { id: number; name: string; }
-
-
-interface CompanyInfo {
-    id: number;
-    name: string;
-    slug: string;
-    tax_number: string;
-    currency: string;
-    fiscal_year_start_month: number;
-}
-
-interface Props {
-    company: CompanyInfo;
-    general: Record<string, string>;
-    taxes: Tax[];
-    sequences: SequenceRow[];
-    rates: Rate[];
-    users: UserRow[];
-    companies: CompanyRow[];
-    initialTab: string;
-}
-
-type TabKey = 'general' | 'taxes' | 'sequences' | 'currencies' | 'imports' | 'users';
-
-export default function Index({ company, general, taxes, sequences, rates, users, companies, initialTab }: Props) {
-    const [activeTab, setActiveTab] = useState<TabKey>((initialTab as TabKey) || 'general');
-    const flash: any = (usePage().props as any).flash;
-
-    useEffect(() => {
-        const url = new URL(window.location.href);
-        url.searchParams.set('tab', activeTab);
-        window.history.replaceState({}, '', url.toString());
-    }, [activeTab]);
-
-    const tabs: { key: TabKey; label: string; icon: string }[] = [
-        { key: 'general', label: 'Entreprise & Général', icon: '🏢' },
-        { key: 'taxes', label: 'Taxes & impôts', icon: '🧾' },
-        { key: 'sequences', label: 'Numérotation', icon: '🔢' },
-        { key: 'currencies', label: 'Devises', icon: '💱' },
-        { key: 'imports', label: 'Imports', icon: '⬆️' },
-        { key: 'users', label: 'Utilisateurs', icon: '👥' },
-    ];
+    const changeTab = (t: string) => {
+        router.get('/parametrage', { tab: t }, { preserveState: true, preserveScroll: true });
+    };
 
     return (
-        <ErpLayout>
-            <Head title="Paramétrage" />
-            <div className="py-6">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="mb-6">
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">⚙️ Paramétrage du système</h1>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Entreprise, taxes, numérotation, devises, imports et utilisateurs</p>
+        <AuthenticatedLayout>
+            <Head title="Paramètres" />
+            <div className="min-h-screen bg-gray-100">
+                {/* En-tête */}
+                <div className="bg-white border-b border-gray-200">
+                    <div className="px-4 py-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
+                        <h1 className="text-2xl font-bold text-gray-800">⚙️ Paramètres</h1>
+                        <p className="mt-1 text-sm text-gray-500">
+                            Configuration de l'entreprise <span className="font-semibold text-gray-900">{company?.name}</span>
+                        </p>
                     </div>
+                </div>
 
-                    {flash?.success && <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">✓ {flash.success}</div>}
-                    {flash?.error && <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">✗ {flash.error}</div>}
-
-                    <div className="bg-white dark:bg-gray-800 rounded-t-lg shadow-sm border-b border-gray-200 dark:border-gray-700">
-                        <nav className="flex overflow-x-auto" aria-label="Tabs">
-                            {tabs.map((tab) => {
-                                const isActive = activeTab === tab.key;
-                                return (
-                                    <button
-                                        key={tab.key}
-                                        onClick={() => setActiveTab(tab.key)}
-                                        className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 ${
-                                            isActive
-                                                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                                                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-                                        }`}
-                                    >
-                                        {tab.icon} {tab.label}
-                                    </button>
-                                );
-                            })}
+                <div className="px-4 py-6 mx-auto max-w-7xl sm:px-6 lg:px-8">
+                    {/* ═══ ONGLETS HORIZONTAUX (fusionnés, pas de sidebar) ═══ */}
+                    <div className="mb-6 overflow-x-auto bg-white border-b border-gray-200 shadow-sm">
+                        <nav className="flex">
+                            {(menu || []).map((item: any) => (
+                                <button
+                                    key={item.key}
+                                    type="button"
+                                    onClick={() => changeTab(item.key)}
+                                    title={item.description}
+                                    className={
+                                        'flex items-center gap-2 whitespace-nowrap border-b-2 px-5 py-3 text-sm font-medium transition ' +
+                                        (tab === item.key
+                                            ? 'border-gray-900 bg-gray-50 text-gray-900'
+                                            : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700')
+                                    }
+                                >
+                                    <span className="text-lg">{item.icon}</span>
+                                    <span>{item.label}</span>
+                                </button>
+                            ))}
                         </nav>
                     </div>
 
-                    <div className="bg-white dark:bg-gray-800 rounded-b-lg shadow-sm p-6">
-                        {activeTab === 'general' && <GeneralTab company={company} general={general} />}
-                        {activeTab === 'taxes' && <TaxesTab taxes={taxes} />}
-                        {activeTab === 'sequences' && <SequencesTab sequences={sequences} />}
-                        {activeTab === 'currencies' && <CurrenciesTab rates={rates} />}
-                        {activeTab === 'imports' && <ImportsTab />}
-                        {activeTab === 'users' && <UsersTab users={users} companies={companies} />}
+                    {/* Contenu de l'onglet actif */}
+                    {tab === 'company' && <CompanySection company={company} />}
+                    {tab === 'users' && <UsersSection users={users} />}
+                    {tab === 'taxes' && <TaxesSection taxes={taxes} />}
+                    {tab === 'payroll' && <PayrollSection contributions={contributions} payItems={pay_items} />}
+                    {tab === 'accounting' && <AccountingSection journals={journals} charts={charts} />}
+                    {tab === 'general' && <GeneralSection settings={settings} company={company} />}
+                    {['taxes','payroll','accounting','users'].includes(tab) && <SettingsCrud tab={tab} />}
+                    {tab === 'user-management' && <UserManagementSection users={users} companies={[company]} modules={modules} />}
+                </div>
+            </div>
+        </AuthenticatedLayout>
+    );
+}
+
+/* ═══════════ SECTIONS ═══════════ */
+
+function CompanySection({ company }: any) {
+    const { data, setData, put, processing, errors } = useForm({
+        name: company?.name || '',
+        short_name: company?.short_name || '',
+        email: company?.email || '',
+        phone: company?.phone || '',
+        address: company?.address || '',
+        rccm: company?.rccm || '',
+        tax_id: company?.tax_id || '',
+    });
+
+    const submit = (e: any) => {
+        e.preventDefault();
+        put('/parametrage/company/' + company.id);
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow">
+                <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200">
+                    <span className="text-2xl">🏢</span>
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-800">Informations de l'entreprise</h2>
+                        <p className="text-sm text-gray-500">Identité légale et coordonnées</p>
                     </div>
                 </div>
+                <form onSubmit={submit} className="p-6">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div className="md:col-span-2">
+                            <label className="block mb-1 text-sm font-medium text-gray-700">Raison sociale *</label>
+                            <input type="text" value={data.name} onChange={(e) => setData('name', e.target.value)} required
+                                className="w-full border-gray-300 rounded-md shadow-sm focus:border-gray-900 focus:ring-gray-900" />
+                            {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+                        </div>
+                        <div>
+                            <label className="block mb-1 text-sm font-medium text-gray-700">Nom abrégé</label>
+                            <input type="text" value={data.short_name} onChange={(e) => setData('short_name', e.target.value)}
+                                className="w-full border-gray-300 rounded-md shadow-sm focus:border-gray-900 focus:ring-gray-900" />
+                        </div>
+                        <div>
+                            <label className="block mb-1 text-sm font-medium text-gray-700">Email</label>
+                            <input type="email" value={data.email} onChange={(e) => setData('email', e.target.value)}
+                                className="w-full border-gray-300 rounded-md shadow-sm focus:border-gray-900 focus:ring-gray-900" />
+                        </div>
+                        <div>
+                            <label className="block mb-1 text-sm font-medium text-gray-700">Téléphone</label>
+                            <input type="text" value={data.phone} onChange={(e) => setData('phone', e.target.value)}
+                                className="w-full border-gray-300 rounded-md shadow-sm focus:border-gray-900 focus:ring-gray-900" />
+                        </div>
+                        <div>
+                            <label className="block mb-1 text-sm font-medium text-gray-700">RCCM</label>
+                            <input type="text" value={data.rccm} onChange={(e) => setData('rccm', e.target.value)}
+                                className="w-full border-gray-300 rounded-md shadow-sm focus:border-gray-900 focus:ring-gray-900" />
+                        </div>
+                        <div>
+                            <label className="block mb-1 text-sm font-medium text-gray-700">N° Identification fiscale</label>
+                            <input type="text" value={data.tax_id} onChange={(e) => setData('tax_id', e.target.value)}
+                                className="w-full border-gray-300 rounded-md shadow-sm focus:border-gray-900 focus:ring-gray-900" />
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="block mb-1 text-sm font-medium text-gray-700">Adresse complète</label>
+                            <textarea value={data.address} onChange={(e) => setData('address', e.target.value)} rows={3}
+                                className="w-full border-gray-300 rounded-md shadow-sm focus:border-gray-900 focus:ring-gray-900" />
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-2 mt-6">
+                        <button type="reset" className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50">Annuler</button>
+                        <button type="submit" disabled={processing}
+                            className="px-4 py-2 text-white bg-gray-900 rounded-md hover:bg-gray-800 disabled:opacity-50">
+                            💾 Enregistrer
+                        </button>
+                    </div>
+                </form>
             </div>
-        </ErpLayout>
+
+            <div className="p-6 bg-white rounded-lg shadow">
+                <h3 className="mb-3 font-semibold text-gray-800">📊 Informations système</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div><span className="text-gray-500">Devise :</span> <strong>{company?.currency}</strong></div>
+                    <div><span className="text-gray-500">Fuseau horaire :</span> <strong>{company?.timezone}</strong></div>
+                    <div><span className="text-gray-500">Statut :</span> <span className="font-medium text-green-600">Active</span></div>
+                </div>
+            </div>
+        </div>
     );
 }
 
-/* ═══════════ ONGLET GÉNÉRAL ═══════════ */
-function GeneralTab({ company, general }: { company: CompanyInfo; general: Record<string, string> }) {
-    const [form, setForm] = useState({
-        name: company.name || '',
-        tax_number: company.tax_number || '',
-        currency: company.currency || 'XOF',
-        fiscal_year_start_month: company.fiscal_year_start_month || 1,
-        settings: {
-            language: general['language'] || 'fr',
-            timezone: general['timezone'] || 'Africa/Abidjan',
-            invoice_payment_days: general['invoice_payment_days'] || '30',
-        },
-    });
-    const [saving, setSaving] = useState(false);
-
-    const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
-    const setSetting = (k: string, v: string) => setForm((f) => ({ ...f, settings: { ...f.settings, [k]: v } }));
-
-    const months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
-
-    const submit = (e: FormEvent) => {
-        e.preventDefault();
-        setSaving(true);
-        router.put(route('settings.general.update'), form, { onFinish: () => setSaving(false) });
+function UsersSection({ users }: any) {
+    const roleLabels: any = {
+        'admin': 'Administrateur',
+        'accountant': 'Comptable',
+        'hr-manager': 'Resp. RH',
+        'manager': 'Manager',
+        'employee': 'Employé',
     };
 
     return (
-        <form onSubmit={submit} className="space-y-5 max-w-2xl">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Nom de l'entreprise *">
-                    <input value={form.name} onChange={(e) => set('name', e.target.value)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm" required />
-                </Field>
-                <Field label="N° fiscal (RCCM / NCC)">
-                    <input value={form.tax_number} onChange={(e) => set('tax_number', e.target.value)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm" />
-                </Field>
-                <Field label="Devise">
-                    <select value={form.currency} onChange={(e) => set('currency', e.target.value)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm">
-                        <option value="XOF">XOF — Franc CFA</option>
-                        <option value="EUR">EUR — Euro</option>
-                        <option value="USD">USD — Dollar</option>
-                    </select>
-                </Field>
-                <Field label="Début de l'exercice fiscal">
-                    <select value={form.fiscal_year_start_month} onChange={(e) => set('fiscal_year_start_month', parseInt(e.target.value))} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm">
-                        {months.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-                    </select>
-                </Field>
-                <Field label="Langue">
-                    <select value={form.settings.language} onChange={(e) => setSetting('language', e.target.value)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm">
-                        <option value="fr">Français</option>
-                        <option value="en">English</option>
-                    </select>
-                </Field>
-                <Field label="Fuseau horaire">
-                    <select value={form.settings.timezone} onChange={(e) => setSetting('timezone', e.target.value)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm">
-                        <option value="Africa/Abidjan">Africa/Abidjan (GMT)</option>
-                        <option value="Africa/Douala">Africa/Douala (GMT+1)</option>
-                        <option value="Europe/Paris">Europe/Paris</option>
-                    </select>
-                </Field>
-                <Field label="Délai de paiement factures (jours)">
-                    <input type="number" min="0" value={form.settings.invoice_payment_days} onChange={(e) => setSetting('invoice_payment_days', e.target.value)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm" />
-                </Field>
-            </div>
-            <button type="submit" disabled={saving} className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium py-2.5 px-5 rounded-lg">
-                {saving ? 'Enregistrement…' : '💾 Enregistrer les paramètres'}
-            </button>
-        </form>
-    );
-}
-
-/* ═══════════ ONGLET TAXES ═══════════ */
-function TaxesTab({ taxes }: { taxes: Tax[] }) {
-    const [modal, setModal] = useState<null | { mode: 'create' } | { mode: 'edit'; tax: Tax }>(null);
-
-    const typeLabels: Record<string, string> = {
-        vat: 'TVA',
-        withholding: 'Retenue à la source',
-        income_tax: 'Impôt sur le revenu',
-        other: 'Autre',
-    };
-
-    const remove = (tax: Tax) => {
-        if (window.confirm(`Supprimer la taxe ${tax.code} ?`)) {
-            router.delete(route('settings.taxes.destroy', tax.id));
-        }
-    };
-
-    return (
-        <div>
-            <div className="flex justify-end mb-4">
-                <button onClick={() => setModal({ mode: 'create' })} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 px-4 rounded-md flex items-center gap-1">
-                    <Plus className="h-4 w-4" /> Ajouter une taxe
-                </button>
+        <div className="bg-white rounded-lg shadow">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center gap-3">
+                    <span className="text-2xl">👥</span>
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-800">Utilisateurs ({users.length})</h2>
+                        <p className="text-sm text-gray-500">Comptes ayant accès à cette entreprise</p>
+                    </div>
+                </div>
+                <span className="px-3 py-1 text-sm text-white bg-gray-900 rounded-full">{users.length} compte(s)</span>
             </div>
             <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead className="bg-gray-50 dark:bg-gray-700 border-b">
+                <table className="w-full">
+                    <thead className="border-b bg-gray-50">
                         <tr>
-                            <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Code</th>
-                            <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Nom</th>
-                            <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Type</th>
-                            <th className="p-3 text-right text-xs text-gray-600 dark:text-gray-300 uppercase">Taux</th>
-                            <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Compte</th>
-                            <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Date d'effet</th>
-                            <th className="p-3 text-right text-xs text-gray-600 dark:text-gray-300 uppercase">Actions</th>
+                            <th className="px-6 py-3 text-xs font-medium text-left text-gray-500 uppercase">Utilisateur</th>
+                            <th className="px-6 py-3 text-xs font-medium text-left text-gray-500 uppercase">Rôle</th>
+                            <th className="px-6 py-3 text-xs font-medium text-left text-gray-500 uppercase">Statut</th>
+                            <th className="px-6 py-3 text-xs font-medium text-left text-gray-500 uppercase">Dernière activité</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                        {taxes.length === 0 && (
-                            <tr><td colSpan={7} className="p-6 text-center text-gray-400">Aucune taxe configurée</td></tr>
-                        )}
-                        {taxes.map((tax) => (
-                            <tr key={tax.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                <td className="p-3 font-mono font-semibold">{tax.code}</td>
-                                <td className="p-3">{tax.name}</td>
-                                <td className="p-3">
-                                    <span className="px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
-                                        {typeLabels[tax.type] || tax.type}
+                    <tbody className="divide-y divide-gray-200">
+                        {users.map((user: any) => (
+                            <tr key={user.id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex items-center justify-center w-10 h-10 font-semibold text-white bg-gray-900 rounded-full">
+                                            {user.name ? user.name.charAt(0) : '?'}
+                                        </div>
+                                        <div>
+                                            <div className="font-medium text-gray-900">{user.name}</div>
+                                            <div className="text-sm text-gray-500">{user.email}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-800">
+                                        {roleLabels[user.pivot?.role] || user.pivot?.role || 'Employé'}
                                     </span>
                                 </td>
-                                <td className="p-3 text-right font-mono">{Number(tax.rate).toLocaleString('fr-FR')} %</td>
-                                <td className="p-3 font-mono">{tax.account_number || '—'}</td>
-                                <td className="p-3">{tax.effective_from || '—'}</td>
-                                <td className="p-3 text-right">
-                                    <button onClick={() => setModal({ mode: 'edit', tax })} className="text-indigo-600 hover:text-indigo-800 mr-3" title="Modifier"><Pencil className="h-4 w-4 inline" /></button>
-                                    <button onClick={() => remove(tax)} className="text-red-600 hover:text-red-800" title="Supprimer"><Trash2 className="h-4 w-4 inline" /></button>
+                                <td className="px-6 py-4">
+                                    <span className={'rounded-full px-2.5 py-1 text-xs font-medium ' + (user.pivot?.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800')}>
+                                        {user.pivot?.is_active ? '● Actif' : '● Inactif'}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-500">
+                                    {user.last_seen_at ? new Date(user.last_seen_at).toLocaleDateString('fr-FR') : 'Jamais connecté'}
                                 </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
             </div>
-            {modal && <TaxModal mode={modal.mode} tax={modal.mode === 'edit' ? modal.tax : undefined} onClose={() => setModal(null)} />}
         </div>
     );
 }
 
-function TaxModal({ mode, tax, onClose }: { mode: 'create' | 'edit'; tax?: Tax; onClose: () => void }) {
-    const [form, setForm] = useState({
-        code: tax?.code || '',
-        name: tax?.name || '',
-        type: tax?.type || 'vat',
-        rate: tax?.rate ?? 0,
-        account_number: tax?.account_number || '',
-        effective_from: tax?.effective_from || '',
-        description: tax?.description || '',
-    });
-
-    const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
-
-    const submit = (e: FormEvent) => {
-        e.preventDefault();
-        if (mode === 'create') router.post(route('settings.taxes.store'), form, { onSuccess: onClose });
-        else router.put(route('settings.taxes.update', tax!.id), form, { onSuccess: onClose });
-    };
+function TaxesSection({ taxes }: any) {
+    const typeLabels: any = { vat: 'TVA', other: 'Autre' };
 
     return (
-        <Modal title={mode === 'create' ? '➕ Ajouter une taxe' : '✏️ Modifier la taxe'} onClose={onClose}>
-            <form onSubmit={submit} className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                    <Field label="Code *">
-                        <input value={form.code} onChange={(e) => set('code', e.target.value)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm" required />
-                    </Field>
-                    <Field label="Type *">
-                        <select value={form.type} onChange={(e) => set('type', e.target.value)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm">
-                            <option value="vat">TVA</option>
-                            <option value="withholding">Retenue à la source</option>
-                            <option value="income_tax">Impôt sur le revenu</option>
-                            <option value="other">Autre</option>
-                        </select>
-                    </Field>
+        <div className="bg-white rounded-lg shadow">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200">
+                <span className="text-2xl">📋</span>
+                <div>
+                    <h2 className="text-lg font-semibold text-gray-800">Fiscalité ({taxes.length})</h2>
+                    <p className="text-sm text-gray-500">Taxes et impôts applicables</p>
                 </div>
-                <Field label="Nom *">
-                    <input value={form.name} onChange={(e) => set('name', e.target.value)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm" required />
-                </Field>
-                <div className="grid grid-cols-3 gap-3">
-                    <Field label="Taux (%) *">
-                        <input type="number" step="0.01" min="0" max="100" value={form.rate} onChange={(e) => set('rate', parseFloat(e.target.value) || 0)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm" required />
-                    </Field>
-                    <Field label="Compte comptable">
-                        <input value={form.account_number} onChange={(e) => set('account_number', e.target.value)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm" placeholder="4431" />
-                    </Field>
-                    <Field label="Date d'effet">
-                        <input type="date" value={form.effective_from} onChange={(e) => set('effective_from', e.target.value)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm" />
-                    </Field>
-                </div>
-                <Field label="Description">
-                    <textarea value={form.description} onChange={(e) => set('description', e.target.value)} rows={2} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm" />
-                </Field>
-                <div className="flex justify-end gap-2 pt-2">
-                    <button type="button" onClick={onClose} className="px-4 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600">Annuler</button>
-                    <button type="submit" className="px-4 py-2 text-sm rounded-md bg-indigo-600 hover:bg-indigo-700 text-white">Enregistrer</button>
-                </div>
-            </form>
-        </Modal>
-    );
-}
-
-/* ═══════════ ONGLET SÉQUENCES ═══════════ */
-function SequencesTab({ sequences }: { sequences: SequenceRow[] }) {
-    const [editing, setEditing] = useState<SequenceRow | null>(null);
-
-    const preview = (s: { prefix: string; format: string; next_number: number }) => {
-        const year = new Date().getFullYear();
-        let out = s.format.replace('{prefix}', s.prefix).replace('{year}', String(year));
-        out = out.replace(/\{number(?::(\d+))?\}/g, (_m: string, pad?: string) =>
-            String(s.next_number).padStart(pad ? parseInt(pad) : 4, '0')
-        );
-        return out;
-    };
-
-    return (
-        <div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead className="bg-gray-50 dark:bg-gray-700 border-b">
-                        <tr>
-                            <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Document</th>
-                            <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Préfixe</th>
-                            <th className="p-3 text-right text-xs text-gray-600 dark:text-gray-300 uppercase">Prochain n°</th>
-                            <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Format</th>
-                            <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Aperçu</th>
-                            <th className="p-3 text-right text-xs text-gray-600 dark:text-gray-300 uppercase">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                        {sequences.map((s) => (
-                            <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                <td className="p-3 font-medium">{s.name}</td>
-                                <td className="p-3 font-mono">{s.prefix || '—'}</td>
-                                <td className="p-3 text-right font-mono">{s.next_number}</td>
-                                <td className="p-3 font-mono text-xs">{s.format}</td>
-                                <td className="p-3"><span className="px-2 py-1 rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 font-mono text-xs">{preview(s)}</span></td>
-                                <td className="p-3 text-right">
-                                    <button onClick={() => setEditing(s)} className="text-indigo-600 hover:text-indigo-800" title="Modifier"><Pencil className="h-4 w-4 inline" /></button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
             </div>
-            {editing && <SequenceModal sequence={editing} onClose={() => setEditing(null)} />}
+            <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2 lg:grid-cols-3">
+                {taxes.map((tax: any) => (
+                    <div key={tax.id} className="p-4 transition border border-gray-200 rounded-lg hover:shadow-md">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="font-semibold text-gray-800">{tax.name}</span>
+                            <span className="rounded bg-gray-900 px-2 py-0.5 font-mono text-xs text-white">{tax.code}</span>
+                        </div>
+                        <div className="space-y-1 text-sm text-gray-600">
+                            <div>Type : <strong>{typeLabels[tax.type] || tax.type}</strong></div>
+                            <div>Statut : <span className={tax.is_active ? 'text-green-600' : 'text-red-600'}>{tax.is_active ? 'Actif' : 'Inactif'}</span></div>
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }
 
-function SequenceModal({ sequence, onClose }: { sequence: SequenceRow; onClose: () => void }) {
-    const [form, setForm] = useState({
-        prefix: sequence.prefix || '',
-        next_number: sequence.next_number,
-        format: sequence.format,
-    });
+function PayrollSection({ contributions, payItems }: any) {
+    return (
+        <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow">
+                <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200">
+                    <span className="text-2xl">💰</span>
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-800">Cotisations sociales</h2>
+                        <p className="text-sm text-gray-500">CNPS et autres organismes</p>
+                    </div>
+                </div>
+                <div className="p-6">
+                    <table className="w-full">
+                        <thead className="border-b bg-gray-50">
+                            <tr>
+                                <th className="px-4 py-2 text-xs font-medium text-left text-gray-500 uppercase">Cotisation</th>
+                                <th className="px-4 py-2 text-xs font-medium text-left text-gray-500 uppercase">Organisme</th>
+                                <th className="px-4 py-2 text-xs font-medium text-left text-gray-500 uppercase">Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {contributions.map((c: any) => (
+                                <tr key={c.id}>
+                                    <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-600">{c.organism}</td>
+                                    <td className="px-4 py-3">
+                                        <span className={'rounded-full px-2 py-0.5 text-xs ' + (c.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800')}>
+                                            {c.is_active ? 'Actif' : 'Inactif'}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-    const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
+            <div className="bg-white rounded-lg shadow">
+                <div className="px-6 py-4 border-b border-gray-200">
+                    <h3 className="font-semibold text-gray-800">Rubriques de paie ({payItems.length})</h3>
+                </div>
+                <div className="grid grid-cols-1 gap-3 p-6 md:grid-cols-2">
+                    {payItems.map((item: any) => (
+                        <div key={item.id} className="flex items-center gap-3 p-3 border border-gray-200 rounded">
+                            <span className={'h-2 w-2 rounded-full ' + (item.type === 'earning' ? 'bg-green-500' : 'bg-red-500')}></span>
+                            <span className="flex-1 text-sm font-medium text-gray-800">{item.name}</span>
+                            <span className="font-mono text-xs text-gray-500">{item.code}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
 
-    const submit = (e: FormEvent) => {
-        e.preventDefault();
-        router.put(route('settings.sequences.update', sequence.id), form, { onSuccess: onClose });
+function AccountingSection({ journals, charts }: any) {
+    const typeColors: any = {
+        sale: 'bg-green-100 text-green-800',
+        sales: 'bg-green-100 text-green-800',
+        purchase: 'bg-orange-100 text-orange-800',
+        bank: 'bg-blue-100 text-blue-800',
+        cash: 'bg-yellow-100 text-yellow-800',
+        payroll: 'bg-purple-100 text-purple-800',
+        misc: 'bg-gray-100 text-gray-800',
     };
 
     return (
-        <Modal title={'🔢 Séquence : ' + sequence.name} onClose={onClose}>
-            <form onSubmit={submit} className="space-y-3">
-                <Field label="Préfixe">
-                    <input value={form.prefix} onChange={(e) => set('prefix', e.target.value)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm" />
-                </Field>
-                <Field label="Prochain numéro *">
-                    <input type="number" min="1" value={form.next_number} onChange={(e) => set('next_number', parseInt(e.target.value) || 1)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm" required />
-                </Field>
-                <Field label="Format *">
-                    <select value={form.format} onChange={(e) => set('format', e.target.value)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm">
-                        <option value="{prefix}-{year}-{number:04}">{form.prefix}-2025-0001</option>
-                        <option value="{prefix}-{number:04}">{form.prefix}-0001</option>
-                        <option value="{prefix}-{year}-{number:05}">{form.prefix}-2025-00001</option>
-                        <option value="{prefix}-{year}-{number:06}">{form.prefix}-2025-000001</option>
-                        <option value="{prefix}-{year}{number:03}">{form.prefix}-2025001</option>
+        <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow">
+                <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200">
+                    <span className="text-2xl">📒</span>
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-800">Journaux comptables ({journals.length})</h2>
+                        <p className="text-sm text-gray-500">Journaux disponibles pour la saisie</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2 lg:grid-cols-3">
+                    {journals.map((j: any) => (
+                        <div key={j.id} className="p-4 border border-gray-200 rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="rounded bg-gray-900 px-2 py-0.5 font-mono text-xs text-white">{j.code}</span>
+                                <span className={'rounded-full px-2 py-0.5 text-xs ' + (typeColors[j.type] || 'bg-gray-100')}>{j.type}</span>
+                            </div>
+                            <div className="font-medium text-gray-800">{j.name}</div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <div className="p-6 bg-white rounded-lg shadow">
+                <h3 className="mb-3 font-semibold text-gray-800">📚 Plans comptables</h3>
+                <div className="space-y-3">
+                    {charts.map((chart: any) => (
+                        <div key={chart.id} className="flex items-center justify-between p-4 border border-gray-200 rounded">
+                            <div>
+                                <div className="font-medium text-gray-900">{chart.name}</div>
+                                <div className="text-sm text-gray-500">{chart.standard} - {chart.version}</div>
+                            </div>
+                            <span className="px-3 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full">
+                                {chart.is_default ? '★ Par défaut' : 'Actif'}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function GeneralSection({ settings, company }: any) {
+    const { data, setData, put, processing } = useForm({
+        language: settings?.language?.value || 'fr',
+        timezone: settings?.timezone?.value || 'Africa/Abidjan',
+        invoice_payment_days: settings?.invoice_payment_days?.value || '30',
+    });
+
+    const submit = (e: any) => {
+        e.preventDefault();
+        put('/parametrage/general/' + company.id);
+    };
+
+    return (
+        <div className="bg-white rounded-lg shadow">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200">
+                <span className="text-2xl">⚙️</span>
+                <div>
+                    <h2 className="text-lg font-semibold text-gray-800">Préférences système</h2>
+                    <p className="text-sm text-gray-500">Paramètres généraux de fonctionnement</p>
+                </div>
+            </div>
+            <form onSubmit={submit} className="p-6 space-y-4">
+                <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">🌍 Langue de l'interface</label>
+                    <select value={data.language} onChange={(e) => setData('language', e.target.value)}
+                        className="w-full border-gray-300 rounded-md shadow-sm focus:border-gray-900 focus:ring-gray-900">
+                        <option value="fr">🇫🇷 Français</option>
+                        <option value="en">🇬🇧 English</option>
                     </select>
-                </Field>
-                <div className="flex justify-end gap-2 pt-2">
-                    <button type="button" onClick={onClose} className="px-4 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600">Annuler</button>
-                    <button type="submit" className="px-4 py-2 text-sm rounded-md bg-indigo-600 hover:bg-indigo-700 text-white">Enregistrer</button>
+                </div>
+                <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">🕐 Fuseau horaire</label>
+                    <select value={data.timezone} onChange={(e) => setData('timezone', e.target.value)}
+                        className="w-full border-gray-300 rounded-md shadow-sm focus:border-gray-900 focus:ring-gray-900">
+                        <option value="Africa/Abidjan">Africa/Abidjan (GMT+0)</option>
+                        <option value="Africa/Dakar">Africa/Dakar (GMT+0)</option>
+                        <option value="Africa/Lagos">Africa/Lagos (GMT+1)</option>
+                        <option value="Europe/Paris">Europe/Paris (GMT+1)</option>
+                    </select>
+                </div>
+                <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">📅 Délai de paiement factures (jours)</label>
+                    <input type="number" value={data.invoice_payment_days}
+                        onChange={(e) => setData('invoice_payment_days', e.target.value)}
+                        min="0" max="90"
+                        className="w-full border-gray-300 rounded-md shadow-sm focus:border-gray-900 focus:ring-gray-900" />
+                </div>
+                <div className="flex justify-end pt-4">
+                    <button type="submit" disabled={processing}
+                        className="px-4 py-2 text-white bg-gray-900 rounded-md hover:bg-gray-800 disabled:opacity-50">
+                        💾 Enregistrer
+                    </button>
                 </div>
             </form>
-        </Modal>
-    );
-}
-
-/* ═══════════ ONGLET DEVISES ═══════════ */
-function CurrenciesTab({ rates }: { rates: Rate[] }) {
-    const [modal, setModal] = useState<null | { mode: 'create' } | { mode: 'edit'; rate: Rate }>(null);
-
-    const remove = (rate: Rate) => {
-        if (window.confirm(`Supprimer le taux ${rate.currency_code} ?`)) {
-            router.delete(route('settings.rates.destroy', rate.id));
-        }
-    };
-
-    return (
-        <div>
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Taux de change vers la devise de base (XOF) — 1 unité de la devise = taux en XOF.</p>
-                <button onClick={() => setModal({ mode: 'create' })} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 px-4 rounded-md flex items-center gap-1 shrink-0">
-                    <Plus className="h-4 w-4" /> Ajouter un taux
-                </button>
-            </div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead className="bg-gray-50 dark:bg-gray-700 border-b">
-                        <tr>
-                            <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Code</th>
-                            <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Devise</th>
-                            <th className="p-3 text-right text-xs text-gray-600 dark:text-gray-300 uppercase">1 unité → XOF</th>
-                            <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Date d'effet</th>
-                            <th className="p-3 text-right text-xs text-gray-600 dark:text-gray-300 uppercase">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                        {rates.length === 0 && (
-                            <tr><td colSpan={5} className="p-6 text-center text-gray-400">Aucun taux de change configuré</td></tr>
-                        )}
-                        {rates.map((r) => (
-                            <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                <td className="p-3 font-mono font-semibold">{r.currency_code}</td>
-                                <td className="p-3">{r.currency_name || '—'}</td>
-                                <td className="p-3 text-right font-mono">{Number(r.rate_to_base).toLocaleString('fr-FR')}</td>
-                                <td className="p-3">{r.effective_from}</td>
-                                <td className="p-3 text-right">
-                                    <button onClick={() => setModal({ mode: 'edit', rate: r })} className="text-indigo-600 hover:text-indigo-800 mr-3" title="Modifier"><Pencil className="h-4 w-4 inline" /></button>
-                                    <button onClick={() => remove(r)} className="text-red-600 hover:text-red-800" title="Supprimer"><Trash2 className="h-4 w-4 inline" /></button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-            {modal && <RateModal mode={modal.mode} rate={modal.mode === 'edit' ? modal.rate : undefined} onClose={() => setModal(null)} />}
         </div>
     );
 }
 
-function RateModal({ mode, rate, onClose }: { mode: 'create' | 'edit'; rate?: Rate; onClose: () => void }) {
-    const [form, setForm] = useState({
-        currency_code: rate?.currency_code || '',
-        currency_name: rate?.currency_name || '',
-        rate_to_base: rate?.rate_to_base ?? 1,
-        effective_from: rate?.effective_from || new Date().toISOString().split('T')[0],
+function UserManagementSection({ users, companies, modules }: any) {
+    const [showForm, setShowForm] = useState(false);
+    const { data, setData, post, processing, errors } = useForm({
+        name: '',
+        email: '',
+        company_id: companies[0]?.id || '',
+        role: 'employee',
+        modules: [] as number[],
+        module_permissions: [] as any[],
     });
 
-    const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
+    const toggleModule = (module: any) => {
+        const exists = data.module_permissions.some((item: any) => item.module_id === module.id);
+        const nextPermissions = exists
+            ? data.module_permissions.filter((item: any) => item.module_id !== module.id)
+            : [...data.module_permissions, { module_id: module.id, can_view: true, can_create: false, can_edit: false, can_delete: false }];
 
-    const submit = (e: FormEvent) => {
-        e.preventDefault();
-        if (mode === 'create') router.post(route('settings.rates.store'), form, { onSuccess: onClose });
-        else router.put(route('settings.rates.update', rate!.id), form, { onSuccess: onClose });
+        setData({
+            ...data,
+            modules: nextPermissions.map((item: any) => item.module_id),
+            module_permissions: nextPermissions,
+        });
     };
 
-    return (
-        <Modal title={mode === 'create' ? '➕ Ajouter un taux de change' : '✏️ Modifier le taux'} onClose={onClose}>
-            <form onSubmit={submit} className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                    <Field label="Code devise *">
-                        <select value={form.currency_code} onChange={(e) => set('currency_code', e.target.value)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm" required>
-                            <option value="">— Choisir —</option>
-                            <option value="EUR">EUR — Euro</option>
-                            <option value="USD">USD — Dollar US</option>
-                            <option value="GBP">GBP — Livre sterling</option>
-                            <option value="CAD">CAD — Dollar canadien</option>
-                            <option value="JPY">JPY — Yen japonais</option>
-                            <option value="CNY">CNY — Yuan chinois</option>
-                        </select>
-                    </Field>
-                    <Field label="Nom de la devise">
-                        <input value={form.currency_name} onChange={(e) => set('currency_name', e.target.value)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm" placeholder="Euro" />
-                    </Field>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                    <Field label="Taux vers XOF *">
-                        <input type="number" step="0.000001" min="0" value={form.rate_to_base} onChange={(e) => set('rate_to_base', parseFloat(e.target.value) || 0)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm" required />
-                    </Field>
-                    <Field label="Date d'effet *">
-                        <input type="date" value={form.effective_from} onChange={(e) => set('effective_from', e.target.value)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm" required />
-                    </Field>
-                </div>
-                <div className="flex justify-end gap-2 pt-2">
-                    <button type="button" onClick={onClose} className="px-4 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600">Annuler</button>
-                    <button type="submit" className="px-4 py-2 text-sm rounded-md bg-indigo-600 hover:bg-indigo-700 text-white">Enregistrer</button>
-                </div>
-            </form>
-        </Modal>
-    );
-}
+    const togglePermission = (moduleId: number, permission: string, checked: boolean) => {
+        const nextPermissions = data.module_permissions.map((item: any) =>
+            item.module_id === moduleId ? { ...item, [permission]: checked } : item
+        );
+        setData('module_permissions', nextPermissions);
+    };
 
-/* ═══════════ ONGLET IMPORTS ═══════════ */
-function ImportsTab() {
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ImportCard
-                title="👥 Employés"
-                desc="Importez plusieurs employés d'un coup via un fichier CSV."
-                routeName="settings.import.employees"
-                format="first_name,last_name,email,phone,hire_date"
-            />
-            <ImportCard
-                title="📒 Écritures comptables"
-                desc="Importez des écritures (lignes regroupées par référence)."
-                routeName="settings.import.journal"
-                format="entry_date,journal_code,reference,description,account_number,debit,credit"
-            />
-        </div>
-    );
-}
-
-function ImportCard({ title, desc, routeName, format }: { title: string; desc: string; routeName: string; format: string }) {
-    const [file, setFile] = useState<File | null>(null);
-    const [uploading, setUploading] = useState(false);
-
-    const submit = (e: FormEvent) => {
+    const submit = (e: any) => {
         e.preventDefault();
-        if (!file) return;
-        setUploading(true);
-        router.post(route(routeName), { file }, {
-            forceFormData: true,
-            onSuccess: () => setFile(null),
-            onFinish: () => setUploading(false),
+        post('/super-admin/users', {
+            onSuccess: () => {
+                setShowForm(false);
+                setData({
+                    name: '',
+                    email: '',
+                    company_id: companies[0]?.id || '',
+                    role: 'employee',
+                    modules: [],
+                    module_permissions: [],
+                });
+            },
         });
     };
 
     return (
-        <form onSubmit={submit} className="border border-gray-200 dark:border-gray-700 rounded-lg p-5">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{desc}</p>
-            <div className="mt-4">
-                <input
-                    type="file"
-                    accept=".csv,.txt"
-                    onChange={(e) => setFile(e.target.files?.[0] || null)}
-                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                />
-            </div>
-            <p className="text-xs text-gray-400 mt-2 font-mono">Colonnes attendues : {format}</p>
-            <button
-                type="submit"
-                disabled={!file || uploading}
-                className="mt-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium py-2 px-4 rounded-md"
-            >
-                {uploading ? '⏳ Import en cours…' : '📤 Importer'}
-            </button>
-        </form>
-    );
-}
-
-/* ═══════════ ONGLET UTILISATEURS ═══════════ */
-function UsersTab({ users, companies }: { users: UserRow[]; companies: CompanyRow[] }) {
-    const [modal, setModal] = useState<null | { mode: 'create' } | { mode: 'edit'; user: UserRow }>(null);
-
-    const companyName = (id: number) => companies.find((c) => c.id === id)?.name || ('#' + id);
-
-    return (
-        <div>
-            <div className="flex justify-end mb-4">
-                <button onClick={() => setModal({ mode: 'create' })} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 px-4 rounded-md flex items-center gap-1">
-                    <Plus className="h-4 w-4" /> Ajouter un utilisateur
-                </button>
-            </div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead className="bg-gray-50 dark:bg-gray-700 border-b">
-                        <tr>
-                            <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Nom</th>
-                            <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Email</th>
-                            <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Entreprises autorisées</th>
-                            <th className="p-3 text-right text-xs text-gray-600 dark:text-gray-300 uppercase">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                        {users.map((u) => (
-                            <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                <td className="p-3 font-medium">{u.name}</td>
-                                <td className="p-3 text-gray-500 dark:text-gray-400">{u.email}</td>
-                                <td className="p-3">
-                                    <div className="flex flex-wrap gap-1">
-                                        {u.companies.length === 0 && <span className="text-gray-400 text-xs">Aucune</span>}
-                                        {u.companies.map((cid) => (
-                                            <span key={cid} className="px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
-                                                {companyName(cid)}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </td>
-                                <td className="p-3 text-right">
-                                    <button onClick={() => setModal({ mode: 'edit', user: u })} className="text-indigo-600 hover:text-indigo-800" title="Modifier"><Pencil className="h-4 w-4 inline" /></button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-            {modal && <UserModal mode={modal.mode} user={modal.mode === 'edit' ? modal.user : undefined} companies={companies} onClose={() => setModal(null)} />}
-        </div>
-    );
-}
-
-function UserModal({ mode, user, companies, onClose }: { mode: 'create' | 'edit'; user?: UserRow; companies: CompanyRow[]; onClose: () => void }) {
-    const [form, setForm] = useState({
-        name: user?.name || '',
-        email: user?.email || '',
-        password: '',
-        companies: user?.companies || [],
-    });
-
-    const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
-
-    const toggleCompany = (id: number) => {
-        setForm((f) => ({
-            ...f,
-            companies: f.companies.includes(id) ? f.companies.filter((c) => c !== id) : [...f.companies, id],
-        }));
-    };
-
-    const submit = (e: FormEvent) => {
-        e.preventDefault();
-        if (mode === 'create') router.post(route('settings.users.store'), form, { onSuccess: onClose });
-        else router.put(route('settings.users.update', user!.id), form, { onSuccess: onClose });
-    };
-
-    return (
-        <Modal title={mode === 'create' ? '➕ Ajouter un utilisateur' : "✏️ Modifier l'utilisateur"} onClose={onClose}>
-            <form onSubmit={submit} className="space-y-3">
-                <Field label="Nom complet *">
-                    <input value={form.name} onChange={(e) => set('name', e.target.value)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm" required />
-                </Field>
-                <Field label="Email *">
-                    <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm" required />
-                </Field>
-                <Field label={mode === 'create' ? 'Mot de passe *' : 'Nouveau mot de passe (laisser vide pour ne pas changer)'}>
-                    <input type="password" value={form.password} onChange={(e) => set('password', e.target.value)} className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 text-sm" required={mode === 'create'} minLength={6} />
-                </Field>
-                <Field label="Entreprises autorisées">
-                    <div className="space-y-1 border border-gray-200 dark:border-gray-600 rounded-md p-3 max-h-40 overflow-y-auto">
-                        {companies.map((c) => (
-                            <label key={c.id} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200 cursor-pointer">
-                                <input type="checkbox" checked={form.companies.includes(c.id)} onChange={() => toggleCompany(c.id)} className="rounded border-gray-300" />
-                                {c.name}
-                            </label>
-                        ))}
+        <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                        <span className="text-2xl">🛡️</span>
+                        <div>
+                            <h2 className="text-lg font-semibold text-gray-800">Gestion des utilisateurs ({users.length})</h2>
+                            <p className="text-sm text-gray-500">Créer des comptes et attribuer les modules</p>
+                        </div>
                     </div>
-                </Field>
-                <div className="flex justify-end gap-2 pt-2">
-                    <button type="button" onClick={onClose} className="px-4 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600">Annuler</button>
-                    <button type="submit" className="px-4 py-2 text-sm rounded-md bg-indigo-600 hover:bg-indigo-700 text-white">Enregistrer</button>
+                    <button type="button" onClick={() => setShowForm(!showForm)} className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-md hover:bg-gray-800">
+                        {showForm ? 'Fermer' : '+ Nouvel utilisateur'}
+                    </button>
                 </div>
-            </form>
-        </Modal>
-    );
-}
 
-/* ═══════════ COMPOSANTS COMMUNS ═══════════ */
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
-    return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-                    <h3 className="font-bold text-gray-900 dark:text-gray-100">{title}</h3>
-                    <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+                {showForm && (
+                    <form onSubmit={submit} className="p-6 space-y-4 border-b border-gray-200">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block mb-1 text-sm font-medium">Nom *</label>
+                                <input value={data.name} onChange={(e) => setData('name', e.target.value)} required className="w-full px-3 py-2 border-gray-300 rounded-md" />
+                            </div>
+                            <div>
+                                <label className="block mb-1 text-sm font-medium">Email *</label>
+                                <input type="email" value={data.email} onChange={(e) => setData('email', e.target.value)} required className="w-full px-3 py-2 border-gray-300 rounded-md" />
+                            </div>
+                            <div>
+                                <label className="block mb-1 text-sm font-medium">Entreprise *</label>
+                                <select value={data.company_id} onChange={(e) => setData('company_id', e.target.value)} className="w-full px-3 py-2 border-gray-300 rounded-md">
+                                    {companies.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block mb-1 text-sm font-medium">Rôle *</label>
+                                <select value={data.role} onChange={(e) => setData('role', e.target.value)} className="w-full px-3 py-2 border-gray-300 rounded-md">
+                                    <option value="admin">Administrateur</option>
+                                    <option value="accountant">Comptable</option>
+                                    <option value="hr-manager">Resp. RH</option>
+                                    <option value="manager">Manager</option>
+                                    <option value="employee">Employé</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block mb-2 text-sm font-medium">🧩 Modules autorisés *</label>
+                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                {modules.map((m: any) => {
+                                    const selected = data.module_permissions.some((item: any) => item.module_id === m.id);
+                                    const permissions = data.module_permissions.find((item: any) => item.module_id === m.id) || { can_view: true, can_create: false, can_edit: false, can_delete: false };
+
+                                    return (
+                                        <div key={m.id} className={'rounded border p-3 ' + (selected ? 'border-gray-900 bg-gray-50' : 'border-gray-200')}>
+                                            <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                                                <input type="checkbox" checked={selected} onChange={() => toggleModule(m)} />
+                                                <span>{m.icon}</span>
+                                                <span>{m.name}</span>
+                                            </label>
+                                            {selected && (
+                                                <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                                                    {['can_view','can_create','can_edit','can_delete'].map((perm) => (
+                                                        <label key={perm} className="flex items-center gap-1 rounded border bg-white px-2 py-1">
+                                                            <input type="checkbox" checked={Boolean(permissions[perm])} onChange={(e) => togglePermission(m.id, perm, e.target.checked)} />
+                                                            <span>{perm === 'can_view' ? 'Voir' : perm === 'can_create' ? 'Créer' : perm === 'can_edit' ? 'Modifier' : 'Supprimer'}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            {errors.modules && <p className="mt-1 text-sm text-red-600">{errors.modules}</p>}
+                        </div>
+
+                        <div className="p-3 text-sm text-blue-800 border border-blue-200 rounded-md bg-blue-50">
+                            📧 L'utilisateur recevra un email avec son mot de passe temporaire et devra le changer à la première connexion.
+                        </div>
+
+                        <div className="flex justify-end gap-2">
+                            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50">Annuler</button>
+                            <button disabled={processing} className="px-4 py-2 text-white bg-gray-900 rounded-md disabled:opacity-50">
+                                Créer + envoyer l'email
+                            </button>
+                        </div>
+                    </form>
+                )}
+
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="text-xs text-left text-gray-500 uppercase border-b bg-gray-50">
+                            <tr>
+                                <th className="px-4 py-3">Utilisateur</th>
+                                <th className="px-4 py-3">Entreprises</th>
+                                <th className="px-4 py-3">Modules</th>
+                                <th className="px-4 py-3">Statut</th>
+                                <th className="px-4 py-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {users.map((u: any) => (
+                                <tr key={u.id} className="hover:bg-gray-50">
+                                    <td className="px-4 py-3">
+                                        <div className="font-medium text-gray-900">{u.name}</div>
+                                        <div className="text-sm text-gray-500">{u.email}</div>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm">{u.companies?.map((c: any) => c.name).join(', ') || '—'}</td>
+                                    <td className="px-4 py-3">
+                                        <div className="flex flex-wrap gap-1">
+                                            {u.modules?.map((m: any) => (
+                                                <span key={m.id} className="rounded bg-gray-100 px-2 py-0.5 text-xs">
+                                                    {m.icon} {m.name}
+                                                </span>
+                                            ))}
+                                            {(!u.modules || u.modules.length === 0) && <span className="text-xs text-gray-400">Aucun module</span>}
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <span className={'rounded-full px-2 py-0.5 text-xs ' + (u.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800')}>
+                                            {u.is_active ? '● Actif' : '● Inactif'}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3 space-x-2">
+                                        <button type="button" onClick={() => router.post('/super-admin/users/' + u.id + '/reset-password')} className="text-sm text-orange-600 hover:underline">Reset MDP</button>
+                                        <button type="button" onClick={() => router.post('/super-admin/users/' + u.id + '/toggle')} className="text-sm text-blue-600 hover:underline">
+                                            {u.is_active ? 'Désactiver' : 'Activer'}
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {users.length === 0 && (
+                                <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500">Aucun utilisateur</td></tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
-                <div className="p-5">{children}</div>
             </div>
-        </div>
-    );
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-    return (
-        <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
-            {children}
         </div>
     );
 }

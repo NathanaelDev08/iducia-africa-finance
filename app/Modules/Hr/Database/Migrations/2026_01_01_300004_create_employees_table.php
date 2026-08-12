@@ -8,10 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('employees', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('company_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+        if (!Schema::hasTable('employees')) {
+            Schema::create('employees', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('company_id')->constrained()->cascadeOnDelete();
+                $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
 
             $table->string('matricule', 30);
             $table->string('last_name');
@@ -53,14 +54,15 @@ return new class extends Migration
             $table->string('payment_method', 30)->default('bank');
             $table->string('payment_currency', 3)->default('XOF');
 
-            $table->timestamps();
-            $table->softDeletes();
+                $table->timestamps();
+                $table->softDeletes();
 
-            $table->unique(['company_id', 'matricule']);
-            $table->index(['company_id', 'status']);
-            $table->index(['company_id', 'department_id']);
-            $table->index(['company_id', 'position_id']);
-        });
+                $table->unique(['company_id', 'matricule']);
+                $table->index(['company_id', 'status']);
+                $table->index(['company_id', 'department_id']);
+                $table->index(['company_id', 'position_id']);
+            });
+        }
     }
 
     public function down(): void

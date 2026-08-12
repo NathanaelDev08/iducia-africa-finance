@@ -18,6 +18,11 @@ use Inertia\Inertia;
 
 class PayrollController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('module:payroll');
+    }
+
     protected function company(Request $request): Company
     {
         return $request->attributes->get('company') ?? Company::first();
@@ -116,6 +121,13 @@ class PayrollController extends Controller
                 'accounting_entry' => $pr->accountingEntry ? ['id' => $pr->accountingEntry->id, 'reference' => $pr->accountingEntry->reference] : null,
             ]);
         return Inertia::render('Payroll/Index', ['activeTab' => 'integration', 'payRuns' => $payRuns]);
+    }
+
+    public function create(Request $request)
+    {
+        return Inertia::render('Payroll/CreatePeriode', [
+            'activeTab' => 'periodes',
+        ]);
     }
 
     /* ===== PAGE DÉTAIL D'UNE PÉRIODE (avec onglets) ===== */
@@ -227,7 +239,7 @@ class PayrollController extends Controller
     {
         if ($payRun->company_id !== $this->company($request)->id || $payRun->is_locked) abort(403);
         if ($payRun->status !== 'calculated') return back()->with('error', 'La paie doit être calculée avant validation.');
-        $payRun->update(['status' => 'validated', 'validated_by' => auth()->id(), 'validated_at' => now()]);
+        $payRun->update(['status' => 'validated', 'approved_by' => auth()->id(), 'approved_at' => now()]);
         activity()->performedOn($payRun)->causedBy(auth()->user())->log('Validation période de paie');
         return back()->with('success', 'Période validée.');
     }
@@ -252,8 +264,11 @@ class PayrollController extends Controller
     {
         $payslip->load(['company', 'employee.department', 'employee.position', 'payRun', 'items']);
         $pdf = Pdf::loadView('payroll.payslip-pdf', ['payslip' => $payslip]);
-        $pdf->setPaper('a4');
-        return $pdf->download('bulletin_' . ($payslip->employee->matricule ?? $payslip->id) . '.pdf');
+        $pdf->setPaper('a4', 'portrait');
+
+        $filename = 'bulletin_' . ($payslip->employee->matricule ?? $payslip->id) . '_' . now()->format('YmdHis') . '.pdf';
+
+        return $pdf->download($filename);
     }
 
     /** Aperçu du bulletin dans le navigateur (sans téléchargement) */
@@ -267,7 +282,14 @@ class PayrollController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('payroll.payslip-pdf', ['payslip' => $payslip]);
         $pdf->setPaper('a4', 'portrait');
 
-        return $pdf->stream('bulletin_' . ($payslip->slip_number ?? $payslip->id) . '.pdf');
+        $filename = 'bulletin_' . ($payslip->slip_number ?? $payslip->id) . '_' . now()->format('YmdHis') . '.pdf';
+
+        return response($pdf->output(), 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename="' . $filename . '"')
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
     /** Suppression d'un bulletin */
     public function payslipDestroy(\App\Modules\Payroll\Models\Payslip $payslip)

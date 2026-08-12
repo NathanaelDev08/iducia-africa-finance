@@ -20,7 +20,7 @@ return new class extends Migration
                 if (!Schema::hasColumn('periods','status')) $t->string('status',20)->default('open');
             });
         }
-        if (!Schema::hasTable('leaves')) {
+        if (!Schema::hasTable('leaves') && Schema::hasTable('employees')) {
             Schema::create('leaves', function (Blueprint $t) {
                 $t->id();
                 $t->foreignId('company_id')->constrained()->cascadeOnDelete();

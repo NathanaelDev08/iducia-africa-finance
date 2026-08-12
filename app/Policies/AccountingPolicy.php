@@ -30,7 +30,7 @@ class AccountingPolicy
     {
         // Vérifier que l'écriture appartient à une entreprise de l'utilisateur
         $companyIds = $user->companies()->pluck('companies.id')->toArray();
-        
+
         if (!in_array($entry->company_id, $companyIds)) {
             return false;
         }
@@ -50,11 +50,18 @@ class AccountingPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasAnyRole([
-            'super-admin',
-            'admin-company',
-            'accountant',
-        ]);
+        $roles = collect($user->getRoleNames())->map(fn ($role) => strtolower((string) $role))->all();
+
+        if (in_array('super-admin', $roles, true)
+            || in_array('admin-company', $roles, true)
+            || in_array('accountant', $roles, true)) {
+            return true;
+        }
+
+        $companyRoles = $user->companies()->pluck('company_user.role')->filter()->map(fn ($role) => strtolower((string) $role))->all();
+
+        return in_array('admin', $companyRoles, true)
+            || in_array('accountant', $companyRoles, true);
     }
 
     /**

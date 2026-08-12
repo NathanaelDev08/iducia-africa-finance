@@ -7,6 +7,11 @@ use Illuminate\Http\Request;
 
 class CompanySwitchController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('module:settings');
+    }
+
     /** Liste JSON des entreprises autorisées pour l'utilisateur connecté */
     public function index(Request $request)
     {

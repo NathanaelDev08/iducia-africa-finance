@@ -15,6 +15,11 @@ use Inertia\Inertia;
 
 class AccountingController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('module:accounting');
+    }
+
     protected function company(Request $request): Company
     {
         return $request->attributes->get('company') ?? Company::first();

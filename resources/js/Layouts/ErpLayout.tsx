@@ -53,10 +53,11 @@ export default function ErpLayout({ children }: PropsWithChildren) {
                 </div>
                 <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
                     {menuItems.map((item) => {
-                        const isActive = item.href === window.location.pathname;
+                        const itemPath = new URL(item.href, window.location.origin).pathname;
+                        const isActive = itemPath === window.location.pathname;
                         const Icon = item.icon;
                         return (
-                            <Link key={item.name} href={item.href}
+                            <Link key={item.name} href={item.href} prefetch="intent"
                                 className={`flex items-center px-5 py-3 text-base font-medium rounded-lg transition ${
                                     isActive
                                     ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 border-l-4 border-indigo-600'
@@ -91,12 +92,12 @@ export default function ErpLayout({ children }: PropsWithChildren) {
 
                             <div className="flex-1 flex items-center justify-end gap-1">
                                 {/* Recherche */}
-                                <Link href={route('search')} title="Recherche globale (Ctrl+K)"
+                                <Link href={route('search')} prefetch="intent" title="Recherche globale (Ctrl+K)"
                                     className="p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700">
                                     <Search className="h-5 w-5" />
                                 </Link>
                                 {/* Notifications + badge */}
-                                <Link href={route('notifications.index')} title="Notifications"
+                                <Link href={route('notifications.index')} prefetch="intent" title="Notifications"
                                     className="p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 relative">
                                     <Bell className="h-5 w-5" />
                                     {notifCount > 0 && (
@@ -182,7 +183,7 @@ export default function ErpLayout({ children }: PropsWithChildren) {
                                     const Icon = item.icon;
                                     const isActive = item.href === window.location.pathname;
                                     return (
-                                        <Link key={item.name} href={item.href}
+                                        <Link key={item.name} href={item.href} prefetch="intent"
                                             className={`flex items-center px-5 py-3 text-base font-medium rounded-lg ${
                                                 isActive
                                                 ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300'

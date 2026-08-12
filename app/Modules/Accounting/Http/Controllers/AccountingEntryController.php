@@ -12,6 +12,7 @@ class AccountingEntryController extends Controller
 {
     public function __construct(protected EntryService $entryService)
     {
+        $this->middleware('module:accounting');
     }
 
     public function index(Request $request): JsonResponse

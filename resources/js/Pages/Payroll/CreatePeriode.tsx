@@ -32,7 +32,7 @@ export default function CreatePeriode({ activeTab, errors }: any) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        post(route('payroll.periodes.store'));
+        post(route('payroll.store'));
     };
 
     return (

@@ -7,11 +7,18 @@ use App\Modules\Accounting\Models\Account;
 use App\Modules\Accounting\Models\JournalItem;
 use App\Modules\Treasury\Models\BankStatement;
 use App\Modules\Treasury\Models\BankStatementLine;
+use App\Modules\Treasury\Models\CashRegister;
+use App\Modules\Treasury\Models\CashTransaction;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class TreasuryController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('module:treasury');
+    }
+
     protected function company(Request $request): Company
     { return $request->attributes->get('company') ?? Company::first(); }
 
@@ -57,9 +64,43 @@ class TreasuryController extends Controller
 
         $bankAccounts = Account::where('company_id', $company->id)->where('number','like','52%')->get(['id','number','name']);
 
+        $cashRegisters = CashRegister::where('company_id', $company->id)
+            ->withCount('transactions')
+            ->orderByDesc('period_start')
+            ->get()
+            ->map(fn ($r) => [
+                'id' => $r->id,
+                'period_start' => $r->period_start->toDateString(),
+                'period_end' => $r->period_end->toDateString(),
+                'opening_balance' => (float) $r->opening_balance,
+                'closing_balance' => (float) $r->closing_balance,
+                'status' => $r->status,
+                'transactions_count' => $r->transactions_count,
+            ]);
+
+        $selectedCashId = $request->query('register') ?? ($cashRegisters->first()['id'] ?? null);
+        $selectedCash = $cashRegisters->firstWhere('id', (int) $selectedCashId);
+
+        $cashTransactions = collect();
+        if ($selectedCash) {
+            $cashTransactions = CashTransaction::where('cash_register_id', $selectedCash['id'])
+                ->orderBy('transaction_date')
+                ->get()
+                ->map(fn ($t) => [
+                    'id' => $t->id,
+                    'transaction_date' => $t->transaction_date->toDateString(),
+                    'reference' => $t->reference,
+                    'description' => $t->description,
+                    'type' => $t->type,
+                    'amount' => (float) $t->amount,
+                ]);
+        }
+
         return Inertia::render('Treasury/Index', [
             'statements'=>$statements,'selected'=>$selected,'lines'=>$lines,'unmatchedItems'=>$unmatchedItems,
-            'bankAccounts'=>$bankAccounts,'initialTab'=>$request->query('tab','statements'),
+            'bankAccounts'=>$bankAccounts,
+            'cashRegisters'=>$cashRegisters,'selectedCash'=>$selectedCash,'cashTransactions'=>$cashTransactions,
+            'initialTab'=>$request->query('tab','statements'),
         ]);
     }
 

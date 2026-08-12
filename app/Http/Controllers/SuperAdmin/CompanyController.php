@@ -12,6 +12,7 @@ class CompanyController extends Controller
 {
     public function __construct(private TenantProvisioningService $provisioning)
     {
+        $this->middleware('module:settings');
     }
 
     public function index(Request $request)

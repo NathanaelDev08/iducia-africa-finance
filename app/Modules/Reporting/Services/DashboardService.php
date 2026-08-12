@@ -151,7 +151,10 @@ class DashboardService
                     'payroll_mass_current_month' => round($payrollMass, 2),
                     'active_employees' => $employeeCount,
                 ],
-                'alerts' => $alerts,
+                'alerts' => array_merge($alerts, $this->overdueInvoiceAlerts($company)),
+                'recent_invoices' => $this->recentInvoices($company),
+                'recent_receipts' => $this->recentReceipts($company),
+                'recent_purchases' => $this->recentPurchases($company),
                 'upcoming_fiscal_deadlines' => $upcomingDeadlines,
             ];
 
@@ -212,5 +215,93 @@ class DashboardService
         return $direction === 'credit'
             ? round($credit - $debit, 2)
             : round($debit - $credit, 2);
+    }
+
+    protected function overdueInvoiceAlerts(Company $company): array
+    {
+        if (!Schema::hasTable('sales_invoices') || !Schema::hasTable('clients')) {
+            return [];
+        }
+
+        $results = DB::table('sales_invoices')
+            ->leftJoin('clients', 'sales_invoices.client_id', '=', 'clients.id')
+            ->where('sales_invoices.company_id', $company->id)
+            ->whereNotIn('sales_invoices.status', ['paid'])
+            ->whereNotNull('sales_invoices.due_date')
+            ->where('sales_invoices.due_date', '<', now()->toDateString())
+            ->orderBy('sales_invoices.due_date')
+            ->limit(5)
+            ->get(['sales_invoices.reference', 'sales_invoices.due_date', 'sales_invoices.total_ttc', 'clients.name as client_name']);
+
+        return $results->map(fn ($row) => '⚠ Facture ' . ($row->reference ?: '?') . ' de ' . ($row->client_name ?: '—') . ' échue le ' . $row->due_date . ' (' . number_format((float) $row->total_ttc, 0, ',', ' ') . ' F)')->toArray();
+    }
+
+    protected function recentInvoices(Company $company): array
+    {
+        if (!Schema::hasTable('sales_invoices') || !Schema::hasTable('clients')) {
+            return [];
+        }
+
+        return DB::table('sales_invoices')
+            ->leftJoin('clients', 'sales_invoices.client_id', '=', 'clients.id')
+            ->where('sales_invoices.company_id', $company->id)
+            ->orderByDesc('sales_invoices.id')
+            ->limit(6)
+            ->get(['sales_invoices.id', 'sales_invoices.reference', 'sales_invoices.invoice_date', 'sales_invoices.total_ttc', 'sales_invoices.status', 'clients.name as client_name'])
+            ->map(fn ($i) => [
+                'id' => $i->id,
+                'reference' => $i->reference ?: 'FAC-' . $i->id,
+                'client' => $i->client_name ?: '—',
+                'date' => $i->invoice_date,
+                'total' => (float) $i->total_ttc,
+                'status' => $i->status ?: 'pending',
+            ])
+            ->toArray();
+    }
+
+    protected function recentReceipts(Company $company): array
+    {
+        if (!Schema::hasTable('customer_payments') || !Schema::hasTable('clients')) {
+            return [];
+        }
+
+        return DB::table('customer_payments')
+            ->leftJoin('clients', 'customer_payments.client_id', '=', 'clients.id')
+            ->where('customer_payments.company_id', $company->id)
+            ->orderByDesc('customer_payments.id')
+            ->limit(6)
+            ->get(['customer_payments.id', 'customer_payments.reference', 'customer_payments.payment_date', 'customer_payments.amount', 'clients.name as client_name'])
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'reference' => $p->reference ?: 'REC-' . str_pad((string) $p->id, 5, '0', STR_PAD_LEFT),
+                'client' => $p->client_name ?: '—',
+                'date' => $p->payment_date,
+                'amount' => (float) $p->amount,
+                'method' => $p->payment_method ?? 'Espèces',
+            ])
+            ->toArray();
+    }
+
+    protected function recentPurchases(Company $company): array
+    {
+        if (!Schema::hasTable('purchase_invoices') || !Schema::hasTable('suppliers')) {
+            return [];
+        }
+
+        return DB::table('purchase_invoices')
+            ->leftJoin('suppliers', 'purchase_invoices.supplier_id', '=', 'suppliers.id')
+            ->where('purchase_invoices.company_id', $company->id)
+            ->orderByDesc('purchase_invoices.id')
+            ->limit(6)
+            ->get(['purchase_invoices.id', 'purchase_invoices.reference', 'purchase_invoices.invoice_date', 'purchase_invoices.total_ttc', 'purchase_invoices.status', 'suppliers.name as supplier_name'])
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'reference' => $p->reference ?: 'FAF-' . $p->id,
+                'supplier' => $p->supplier_name ?: '—',
+                'date' => $p->invoice_date,
+                'total' => (float) $p->total_ttc,
+                'status' => $p->status ?: 'pending',
+            ])
+            ->toArray();
     }
 }

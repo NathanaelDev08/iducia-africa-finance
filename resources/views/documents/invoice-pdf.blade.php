@@ -1,12 +1,39 @@
-<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>{{ $doc['title'] }} {{ $doc['number'] }}</title>
-<style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    @page { size: A4; margin: 10mm 10mm 12mm; }
-    body { font-family: DejaVu Sans, sans-serif; font-size: 9px; color: #111; }
-    table { border-collapse: collapse; width: 100%; }
-    .right { text-align: right; } .center { text-align: center; }
-</style></head>
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>{{ $doc['title'] }} {{ $doc['number'] }}</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        @page { size: A4; margin: 8mm; }
+        html, body { background: #f4f6f8; }
+        body { font-family: DejaVu Sans, sans-serif; font-size: 10px; color: #1d1d1d; padding: 0; }
+        .page { background: #fff; min-height: 277mm; padding: 10mm; }
+        table { border-collapse: collapse; width: 100%; }
+        .header-table td { vertical-align: top; }
+        .company-name { font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px; }
+        .company-info { font-size: 8.8px; color: #475569; line-height: 1.4; }
+        .title { font-size: 18px; font-weight: 800; color: #166534; letter-spacing: 0.6px; margin-bottom: 4px; }
+        .subtitle { font-size: 9px; color: #475569; line-height: 1.4; }
+        .meta { text-align: right; font-size: 9px; color: #475569; }
+        .meta .number { font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px; }
+        .status-pill { display: inline-block; margin-top: 8px; padding: 4px 8px; border: 1px solid #166534; border-radius: 4px; color: #166534; font-size: 8.5px; font-weight: 700; }
+        .section-title { font-size: 9.2px; font-weight: 700; color: #166534; margin-bottom: 6px; }
+        .card { border: 1px solid #d1d5db; border-radius: 6px; overflow: hidden; }
+        .card th, .card td { padding: 7px 8px; border: 1px solid #e5e7eb; }
+        .card th { background: #f8fafc; font-weight: 700; }
+        .card td.label { width: 32%; font-weight: 700; color: #166534; }
+        .card td.value { color: #111827; }
+        .highlight { background: #ecfdf5; font-weight: 700; color: #166534; }
+        .summary-table td { padding: 7px 8px; border: 1px solid #e5e7eb; }
+        .summary-table .label { font-weight: 700; }
+        .summary-table .total { background: #166534; color: #fff; font-weight: 700; }
+        .signatures { display: flex; justify-content: space-between; gap: 10px; margin-top: 10px; }
+        .sign-box { width: 49%; min-height: 40mm; border: 1px solid #d1d5db; border-radius: 6px; padding: 10px; font-size: 9px; color: #475569; }
+        .sign-box strong { display: block; margin-bottom: 6px; color: #111827; }
+        .footer { margin-top: 12px; font-size: 8px; color: #64748b; text-align: center; line-height: 1.4; }
+    </style>
+</head>
 <body>
 @php
     $fmt = fn($v) => number_format((float)$v, 0, ',', ' ');
@@ -15,104 +42,136 @@
     $statusLabels = ['paid' => 'PAYÉE', 'pending' => 'EN ATTENTE', 'overdue' => 'EN RETARD', 'draft' => 'BROUILLON'];
 @endphp
 
-<div style="position:relative; min-height:270mm;">
-    <!-- EN-TÊTE : logo système G + entreprise D -->
-    <table style="margin-bottom:6mm;">
+<div class="page">
+    <table class="header-table" style="margin-bottom:8px;">
         <tr>
-            <td style="width:30%; vertical-align:top; border:none;">
-                @if($logo)<img src="{{ $logo }}" style="height:45px; width:auto;" />@endif
-                <div style="font-size:7px; color:#666; margin-top:2px;">FIDUCIA ERP — Paie, Compta & Fiscalité</div>
-            </td>
-            <td style="width:40%; text-align:center; vertical-align:top; border:none;">
-                <div style="font-size:16px; font-weight:bold; letter-spacing:2px; color:#1a3a6a;">{{ $doc['title'] }}</div>
-                <div style="font-size:10px; margin-top:2px;">N° <strong>{{ $doc['number'] }}</strong></div>
-                <div style="font-size:8px; color:#555; margin-top:1px;">
-                    Date : {{ $fdate($doc['date']) }} @if($doc['due_date']) | Échéance : {{ $fdate($doc['due_date']) }} @endif
-                </div>
-            </td>
-            <td style="width:30%; text-align:right; vertical-align:top; border:none;">
-                @if($companyLogo)<img src="{{ $companyLogo }}" style="height:38px; width:auto;" /><br>@endif
-                <div style="font-size:10px; font-weight:bold; color:#1a3a6a;">{{ $company->name }}</div>
-                <div style="font-size:7px; color:#555; line-height:1.5;">
+            <td style="width:50%;">
+                @if($logo)
+                    <img src="{{ $logo }}" alt="Logo" style="max-height:40px; width:auto; display:block; margin-bottom:6px;">
+                @endif
+                <div class="company-name">{{ $company->name }}</div>
+                <div class="company-info">
                     @if($company->address){{ $company->address }}<br>@endif
                     @if($company->phone)Tél : {{ $company->phone }}<br>@endif
                     @if($company->email){{ $company->email }}<br>@endif
                     @if($company->tax_number)N° Fiscal : {{ $company->tax_number }}@endif
                 </div>
             </td>
-        </tr>
-    </table>
-
-    <!-- STATUT -->
-    <div style="text-align:right; margin-bottom:4mm;">
-        <span style="display:inline-block; padding:2px 10px; border:1.5px solid #1a3a6a; color:#1a3a6a; font-weight:bold; font-size:8px; border-radius:3px;">
-            {{ $statusLabels[$doc['status']] ?? strtoupper($doc['status']) }}
-        </span>
-    </div>
-
-    <!-- TIERS -->
-    <table style="margin-bottom:6mm;">
-        <tr>
-            <td style="border:none; width:45%;"></td>
-            <td style="background:#f0f4fb; border:1px solid #9aa7d6; border-radius:4px; padding:4mm; width:55%;">
-                <div style="font-size:8px; font-weight:bold; color:#1a3a6a; margin-bottom:2mm;">
-                    {{ $doc['kind'] === 'sale' ? 'FACTURÉ À' : 'FOURNISSEUR' }}
-                </div>
-                <div style="font-size:10px; font-weight:bold;">{{ $doc['party']['name'] ?? '—' }}</div>
-                <div style="font-size:8px; color:#444; line-height:1.6;">
-                    @if($doc['party'] && $doc['party']['address']){{ $doc['party']['address'] }}<br>@endif
-                    @if($doc['party'] && $doc['party']['phone'])Tél : {{ $doc['party']['phone'] }}<br>@endif
-                    @if($doc['party'] && $doc['party']['email']){{ $doc['party']['email'] }}<br>@endif
-                    @if($doc['party'] && $doc['party']['tax_number'])N° Fiscal : {{ $doc['party']['tax_number'] }}@endif
-                </div>
+            <td class="meta" style="width:50%;">
+                <div class="number">Réf. {{ $doc['number'] }}</div>
+                <div>Date : {{ $fdate($doc['date']) }}</div>
+                @if($doc['due_date'])<div>Échéance : {{ $fdate($doc['due_date']) }}</div>@endif
+                <div class="status-pill">{{ $statusLabels[$doc['status']] ?? strtoupper($doc['status']) }}</div>
             </td>
         </tr>
     </table>
 
-    <!-- LIGNES -->
-    <table style="margin-bottom:5mm;">
-        <thead>
-            <tr>
-                <th style="background:#1a3a6a; color:#fff; padding:2.5mm 2mm; border:1px solid #1a3a6a; width:6%; text-align:center;">#</th>
-                <th style="background:#1a3a6a; color:#fff; padding:2.5mm 2mm; border:1px solid #1a3a6a; width:48%; text-align:left; padding-left:3mm;">Désignation</th>
-                <th style="background:#1a3a6a; color:#fff; padding:2.5mm 2mm; border:1px solid #1a3a6a; width:10%;" class="center">Qté</th>
-                <th style="background:#1a3a6a; color:#fff; padding:2.5mm 2mm; border:1px solid #1a3a6a; width:14%;" class="right">P.U. HT</th>
-                <th style="background:#1a3a6a; color:#fff; padding:2.5mm 2mm; border:1px solid #1a3a6a; width:8%;" class="center">TVA</th>
-                <th style="background:#1a3a6a; color:#fff; padding:2.5mm 2mm; border:1px solid #1a3a6a; width:14%;" class="right">Total HT</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($doc['items'] as $i => $item)
-            <tr>
-                <td style="border:1px solid #ccc; padding:2mm; text-align:center;">{{ $i + 1 }}</td>
-                <td style="border:1px solid #ccc; padding:2mm 3mm;">{{ $item['label'] }}</td>
-                <td style="border:1px solid #ccc; padding:2mm; text-align:center;">{{ $item['qty'] }}</td>
-                <td style="border:1px solid #ccc; padding:2mm; text-align:right;">{{ $fmt($item['pu']) }}</td>
-                <td style="border:1px solid #ccc; padding:2mm; text-align:center;">{{ number_format((float)$item['tax'], 0) }}%</td>
-                <td style="border:1px solid #ccc; padding:2mm; text-align:right;">{{ $fmt($item['total']) }}</td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
+    <div style="margin-bottom:10px;">
+        <div class="title">{{ $doc['title'] }}</div>
+        <div class="subtitle">Document officiel de facturation</div>
+    </div>
 
-    <!-- TOTAUX -->
-    <table style="width:50%; margin-left:50%;">
-        <tr><td style="padding:2mm 3mm; border:1px solid #ccc;">Total HT</td><td class="right" style="padding:2mm 3mm; border:1px solid #ccc;">{{ $fmt($doc['total_ht']) }} {{ $currency }}</td></tr>
-        <tr><td style="padding:2mm 3mm; border:1px solid #ccc;">TVA (18%)</td><td class="right" style="padding:2mm 3mm; border:1px solid #ccc;">{{ $fmt($doc['total_tax']) }} {{ $currency }}</td></tr>
-        <tr><td style="padding:2.5mm 3mm; background:#1a3a6a; color:#fff; font-weight:bold; border:1px solid #1a3a6a;">TOTAL TTC</td><td class="right" style="padding:2.5mm 3mm; background:#1a3a6a; color:#fff; font-weight:bold; border:1px solid #1a3a6a;">{{ $fmt($doc['total_ttc']) }} {{ $currency }}</td></tr>
-        @if($doc['amount_paid'] > 0)
-        <tr><td style="padding:2mm 3mm; border:1px solid #ccc; color:#2d6a4f;">Déjà payé</td><td class="right" style="padding:2mm 3mm; border:1px solid #ccc; color:#2d6a4f;">- {{ $fmt($doc['amount_paid']) }} {{ $currency }}</td></tr>
-        <tr><td style="padding:2mm 3mm; border:1px solid #ccc; font-weight:bold;">Restant dû</td><td class="right" style="padding:2mm 3mm; border:1px solid #ccc; font-weight:bold;">{{ $fmt($doc['total_ttc'] - $doc['amount_paid']) }} {{ $currency }}</td></tr>
-        @endif
-    </table>
+    <div class="section" style="margin-bottom:10px;">
+        <div class="section-title">{{ $doc['kind'] === 'sale' ? 'Facturé à' : 'Fournisseur' }}</div>
+        <table class="card">
+            <tbody>
+                <tr>
+                    <td class="label">Nom</td>
+                    <td class="value">{{ $doc['party']['name'] ?? '—' }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Adresse</td>
+                    <td class="value">{{ $doc['party']['address'] ?? '—' }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Contact</td>
+                    <td class="value">{{ $doc['party']['phone'] ?? '—' }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Email</td>
+                    <td class="value">{{ $doc['party']['email'] ?? '—' }}</td>
+                </tr>
+                <tr>
+                    <td class="label">N° Fiscal</td>
+                    <td class="value">{{ $doc['party']['tax_number'] ?? '—' }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 
-    <!-- PIED DE PAGE -->
-    <div style="position:absolute; bottom:0; left:0; right:0;">
-        <div style="border-top:1px solid #bbb; padding-top:3mm; font-size:7px; color:#555; text-align:center; line-height:1.6;">
-            {{ $company->name }} @if($company->tax_number)— {{ $company->tax_number }} @endif — {{ $company->address ?? '' }}<br>
-            Paiement à réception par virement bancaire ou Mobile Money. Pénalités de retard : 1,5% par mois.
-            <br><em>Document généré par FIDUCIA ERP le {{ now()->format('d/m/Y à H:i') }}</em>
+    <div class="section" style="margin-bottom:10px;">
+        <div class="section-title">Détails de la facture</div>
+        <table class="card">
+            <thead>
+                <tr>
+                    <th style="width:6%;">#</th>
+                    <th style="width:48%;">Désignation</th>
+                    <th style="width:10%; text-align:center;">Qté</th>
+                    <th style="width:14%; text-align:right;">P.U. HT</th>
+                    <th style="width:8%; text-align:center;">TVA</th>
+                    <th style="width:14%; text-align:right;">Total HT</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($doc['items'] as $i => $item)
+                <tr>
+                    <td style="text-align:center;">{{ $i + 1 }}</td>
+                    <td>{{ $item['label'] }}</td>
+                    <td style="text-align:center;">{{ $item['qty'] }}</td>
+                    <td style="text-align:right;">{{ $fmt($item['pu']) }}</td>
+                    <td style="text-align:center;">{{ number_format((float)$item['tax'], 0) }}%</td>
+                    <td style="text-align:right;">{{ $fmt($item['total']) }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section" style="width:50%; margin-left:auto;">
+        <table class="summary-table">
+            <tr>
+                <td class="label">Total HT</td>
+                <td class="value" style="text-align:right;">{{ $fmt($doc['total_ht']) }} {{ $currency }}</td>
+            </tr>
+            <tr>
+                <td class="label">TVA</td>
+                <td class="value" style="text-align:right;">{{ $fmt($doc['total_tax']) }} {{ $currency }}</td>
+            </tr>
+            <tr>
+                <td class="total">TOTAL TTC</td>
+                <td class="total" style="text-align:right;">{{ $fmt($doc['total_ttc']) }} {{ $currency }}</td>
+            </tr>
+            @if($doc['amount_paid'] > 0)
+            <tr>
+                <td class="label" style="color:#166534;">Déjà payé</td>
+                <td class="value" style="text-align:right; color:#166534;">- {{ $fmt($doc['amount_paid']) }} {{ $currency }}</td>
+            </tr>
+            <tr>
+                <td class="label">Restant dû</td>
+                <td class="value" style="text-align:right;">{{ $fmt($doc['total_ttc'] - $doc['amount_paid']) }} {{ $currency }}</td>
+            </tr>
+            @endif
+        </table>
+    </div>
+
+    <div class="signatures">
+        <div class="sign-box">
+            <strong>Signature du client</strong>
+            Nom :<br><br>
+            Date :<br><br>
+            Signature :
+        </div>
+        <div class="sign-box">
+            <strong>Signature émetteur</strong>
+            Nom :<br><br>
+            Date :<br><br>
+            Cachet / Signature :
         </div>
     </div>
+
+    <div class="footer">
+        Document généré par FIDUCIA ERP le {{ now()->format('d/m/Y à H:i') }}.
+    </div>
 </div>
-</body></html>
+</body>
+</html>

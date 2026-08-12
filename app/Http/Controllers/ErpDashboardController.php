@@ -21,6 +21,14 @@ class ErpDashboardController extends Controller
         }
 
         return Inertia::render('Dashboard', [
+            'company' => $data['company'] ?? [
+                'id' => $company?->id,
+                'name' => $company?->name ?? '—',
+                'currency' => $company?->currency ?? 'FCFA',
+            ],
+            'metrics' => $data['metrics'] ?? [],
+            'alerts' => $data['alerts'] ?? [],
+            'generated_at' => $data['generated_at'] ?? now()->toISOString(),
             'erpData' => $data,
         ]);
     }

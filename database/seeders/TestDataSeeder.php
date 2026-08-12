@@ -46,6 +46,8 @@ class TestDataSeeder extends Seeder
             try { $this->seedSalesInvoices(); } catch (\Throwable $e) { echo "⚠ Factures vente ignorées\n"; }
             try { $this->seedSuppliers($i); } catch (\Throwable $e) { echo "⚠ Fournisseurs ignorés\n"; }
             try { $this->seedPurchaseInvoices(); } catch (\Throwable $e) { echo "⚠ Factures achat ignorées\n"; }
+            try { $this->seedTreasury(); } catch (\Throwable $e) { echo "⚠ Trésorerie ignorée\n"; }
+            try { $this->seedDocuments(); } catch (\Throwable $e) { echo "⚠ Documents ignorés\n"; }
             try { $this->seedAssets(); } catch (\Throwable $e) { echo "⚠ Immobilisations ignorées\n"; }
             try { $this->seedExchangeRates(); } catch (\Throwable $e) { echo "⚠ Devises ignorées\n"; }
             try { $this->seedTaxDeclarations(); } catch (\Throwable $e) { echo "⚠ Fiscalité ignorée\n"; }
@@ -520,19 +522,33 @@ class TestDataSeeder extends Seeder
                 'client_id' => $client->id,
                 'number' => $ref,
                 'reference' => $ref,
-                'issue_date' => $date->toDateString(),
+                'invoice_date' => $date->toDateString(),
                 'due_date' => $date->copy()->addDays(30)->toDateString(),
                 'status' => $inv['status'],
                 'total_ht' => $inv['ht'],
-                'total_vat' => $vat,
+                'total_tax' => $vat,
                 'total_ttc' => $ttc,
-                'amount_ht' => $inv['ht'],
-                'amount_vat' => $vat,
-                'amount_ttc' => $ttc,
-                'total' => $ttc,
+                'amount_paid' => $inv['status'] === 'paid' ? $ttc : 0,
                 'currency' => 'XOF',
+                'notes' => 'Facture client générée automatiquement pour test',
             ]);
-            if ($id) $created++;
+            if ($id) {
+                if ($this->hasTable('sales_invoice_items')) {
+                    $account = DB::table('accounts')->where('company_id', $this->company->id)->where('number', '701100')->first();
+                    $this->insertRow('sales_invoice_items', [
+                        'sales_invoice_id' => $id,
+                        'account_id' => $account->id ?? null,
+                        'description' => 'Prestations de services et conseil',
+                        'quantity' => 1,
+                        'unit_price' => $inv['ht'],
+                        'tax_rate' => 18,
+                        'total_ht' => $inv['ht'],
+                        'total_tax' => $vat,
+                        'total_ttc' => $ttc,
+                    ]);
+                }
+                $created++;
+            }
         }
         echo "🧾 Factures de vente : {$created}\n";
     }
@@ -592,20 +608,279 @@ class TestDataSeeder extends Seeder
                 'supplier_id' => $supplier->id,
                 'number' => $ref,
                 'reference' => $ref,
-                'issue_date' => $date->toDateString(),
+                'invoice_date' => $date->toDateString(),
                 'due_date' => $date->copy()->addDays(30)->toDateString(),
                 'status' => $inv['status'],
                 'total_ht' => $inv['ht'],
-                'total_vat' => $vat,
+                'total_tax' => $vat,
                 'total_ttc' => $ttc,
-                'amount_ht' => $inv['ht'],
-                'amount_vat' => $vat,
-                'amount_ttc' => $ttc,
-                'total' => $ttc,
+                'amount_paid' => $inv['status'] === 'paid' ? $ttc : 0,
+                'notes' => 'Facture fournisseur de test générée automatiquement',
             ]);
-            if ($id) $created++;
+            if ($id) {
+                if ($this->hasTable('purchase_invoice_items')) {
+                    $account = DB::table('accounts')->where('company_id', $this->company->id)->where('number', '601100')->first();
+                    $this->insertRow('purchase_invoice_items', [
+                        'purchase_invoice_id' => $id,
+                        'account_id' => $account->id ?? null,
+                        'description' => 'Achat matériel et services',
+                        'quantity' => 1,
+                        'unit_price' => $inv['ht'],
+                        'tax_rate' => 18,
+                        'total_ht' => $inv['ht'],
+                        'total_tax' => $vat,
+                        'total_ttc' => $ttc,
+                    ]);
+                }
+                $created++;
+            }
         }
         echo "📥 Factures d'achat : {$created}\n";
+    }
+
+    protected function seedTreasury(): void
+    {
+        if (!$this->hasTable('bank_statements') || !$this->hasTable('bank_statement_lines') || !$this->hasTable('cash_registers') || !$this->hasTable('cash_transactions')) {
+            echo "⚠ Tables trésorerie absentes\n";
+            return;
+        }
+
+        $bankAccount = DB::table('accounts')->where('company_id', $this->company->id)->where('number', 'like', '521%')->orderBy('number')->first();
+        $periods = [
+            ['label' => 'Relevé SGBCI', 'start' => now()->subMonths(2)->startOfMonth()->toDateString(), 'end' => now()->subMonths(2)->endOfMonth()->toDateString(), 'opening' => 1500000, 'closing' => 1800000],
+            ['label' => 'Relevé BICICI', 'start' => now()->subMonths(1)->startOfMonth()->toDateString(), 'end' => now()->subMonths(1)->endOfMonth()->toDateString(), 'opening' => 1800000, 'closing' => 1750000],
+        ];
+
+        $createdStatements = 0;
+        foreach ($periods as $period) {
+            try {
+                if (DB::table('bank_statements')->where('company_id', $this->company->id)->where('period_start', $period['start'])->where('period_end', $period['end'])->exists()) {
+                    continue;
+                }
+            } catch (\Throwable $e) {}
+
+            $statementId = $this->insertRow('bank_statements', [
+                'account_id' => $bankAccount->id ?? null,
+                'period_start' => $period['start'],
+                'period_end' => $period['end'],
+                'opening_balance' => $period['opening'],
+                'closing_balance' => $period['closing'],
+                'status' => 'draft',
+            ]);
+
+            if (!$statementId) {
+                continue;
+            }
+
+            $this->insertRow('bank_statement_lines', [
+                'bank_statement_id' => $statementId,
+                'transaction_date' => $period['start'],
+                'reference' => 'VIR-' . substr($period['start'], 0, 7),
+                'description' => 'Virement client reçu',
+                'debit' => 300000,
+                'credit' => 0,
+                'status' => 'matched',
+            ]);
+            $this->insertRow('bank_statement_lines', [
+                'bank_statement_id' => $statementId,
+                'transaction_date' => now()->subDays(12)->toDateString(),
+                'reference' => 'ACH-' . substr($period['start'], 0, 7),
+                'description' => 'Paiement fournisseur',
+                'debit' => 0,
+                'credit' => 250000,
+                'status' => 'unmatched',
+            ]);
+            $createdStatements++;
+        }
+
+        $cashPeriods = [
+            ['start' => now()->startOfMonth()->toDateString(), 'end' => now()->endOfMonth()->toDateString(), 'opening' => 200000, 'closing' => 255000],
+            ['start' => now()->subMonths(1)->startOfMonth()->toDateString(), 'end' => now()->subMonths(1)->endOfMonth()->toDateString(), 'opening' => 120000, 'closing' => 145000],
+        ];
+
+        $createdRegisters = 0;
+        $createdTransactions = 0;
+        foreach ($cashPeriods as $period) {
+            try {
+                if (DB::table('cash_registers')->where('company_id', $this->company->id)->where('period_start', $period['start'])->where('period_end', $period['end'])->exists()) {
+                    continue;
+                }
+            } catch (\Throwable $e) {}
+
+            $registerId = $this->insertRow('cash_registers', [
+                'period_start' => $period['start'],
+                'period_end' => $period['end'],
+                'opening_balance' => $period['opening'],
+                'closing_balance' => $period['closing'],
+                'status' => 'draft',
+            ]);
+
+            if (!$registerId) {
+                continue;
+            }
+
+            $this->insertRow('cash_transactions', [
+                'cash_register_id' => $registerId,
+                'transaction_date' => $period['start'],
+                'reference' => 'CAISSE-ENTREE',
+                'description' => 'Encaissement espèces',
+                'type' => 'in',
+                'amount' => 80000,
+                'status' => 'recorded',
+            ]);
+            $this->insertRow('cash_transactions', [
+                'cash_register_id' => $registerId,
+                'transaction_date' => now()->subDays(2)->toDateString(),
+                'reference' => 'CAISSE-SORTIE',
+                'description' => 'Dépense petite caisse',
+                'type' => 'out',
+                'amount' => 25000,
+                'status' => 'recorded',
+            ]);
+
+            $createdRegisters++;
+            $createdTransactions += 2;
+        }
+
+        echo "🏦 Relevés bancaires : {$createdStatements} | 💰 Caisses : {$createdRegisters} | 🧾 Transactions : {$createdTransactions}\n";
+    }
+
+    protected function seedDocuments(): void
+    {
+        $created = 0;
+        $this->seedSalesOrders();
+        $this->seedPurchaseOrders();
+        $this->seedReceipts();
+        echo "📁 Documents imprimables : générés\n";
+    }
+
+    protected function seedSalesOrders(): void
+    {
+        if (!$this->hasTable('sales_orders')) { return; }
+        $clients = DB::table('clients')->where('company_id', $this->company->id)->get();
+        if ($clients->isEmpty()) { return; }
+
+        $orders = [
+            ['code' => 'DEV-001', 'client' => 0, 'ht' => 820000, 'days' => 30, 'status' => 'sent'],
+            ['code' => 'DEV-002', 'client' => 1, 'ht' => 1200000, 'days' => 20, 'status' => 'accepted'],
+        ];
+
+        foreach ($orders as $ord) {
+            try {
+                if (DB::table('sales_orders')->where('company_id', $this->company->id)->where('reference', $ord['code'])->exists()) { continue; }
+            } catch (\Throwable $e) {}
+
+            $client = $clients[$ord['client']] ?? $clients[0];
+            $vat = round($ord['ht'] * 0.18);
+            $ttc = $ord['ht'] + $vat;
+            $date = now()->subDays($ord['days']);
+
+            $orderId = $this->insertRow('sales_orders', [
+                'client_id' => $client->id,
+                'reference' => $ord['code'],
+                'order_date' => $date->toDateString(),
+                'validity_date' => $date->copy()->addDays(30)->toDateString(),
+                'status' => $ord['status'],
+                'total_ht' => $ord['ht'],
+                'total_tax' => $vat,
+                'total_ttc' => $ttc,
+                'notes' => 'Devis de vente de test',
+            ]);
+
+            if ($orderId && $this->hasTable('sales_order_items')) {
+                $this->insertRow('sales_order_items', [
+                    'sales_order_id' => $orderId,
+                    'description' => 'Offre de service standard',
+                    'quantity' => 1,
+                    'unit_price' => $ord['ht'],
+                    'total_ht' => $ord['ht'],
+                    'tax_rate' => 18,
+                ]);
+            }
+        }
+    }
+
+    protected function seedPurchaseOrders(): void
+    {
+        if (!$this->hasTable('purchase_orders')) { return; }
+        $suppliers = DB::table('suppliers')->where('company_id', $this->company->id)->get();
+        if ($suppliers->isEmpty()) { return; }
+
+        $orders = [
+            ['code' => 'BC-001', 'supplier' => 0, 'ht' => 560000, 'days' => 25, 'status' => 'approved'],
+            ['code' => 'BC-002', 'supplier' => 1, 'ht' => 760000, 'days' => 15, 'status' => 'pending'],
+        ];
+
+        foreach ($orders as $ord) {
+            try {
+                if (DB::table('purchase_orders')->where('company_id', $this->company->id)->where('reference', $ord['code'])->exists()) { continue; }
+            } catch (\Throwable $e) {}
+
+            $supplier = $suppliers[$ord['supplier']] ?? $suppliers[0];
+            $vat = round($ord['ht'] * 0.18);
+            $ttc = $ord['ht'] + $vat;
+            $date = now()->subDays($ord['days']);
+
+            $orderId = $this->insertRow('purchase_orders', [
+                'supplier_id' => $supplier->id,
+                'reference' => $ord['code'],
+                'order_date' => $date->toDateString(),
+                'expected_date' => $date->copy()->addDays(30)->toDateString(),
+                'status' => $ord['status'],
+                'total_ht' => $ord['ht'],
+                'total_tax' => $vat,
+                'total_ttc' => $ttc,
+                'notes' => 'Bon de commande de test',
+            ]);
+
+            if ($orderId && $this->hasTable('purchase_order_items')) {
+                $this->insertRow('purchase_order_items', [
+                    'purchase_order_id' => $orderId,
+                    'description' => 'Fourniture de bureau et impression',
+                    'quantity' => 1,
+                    'unit_price' => $ord['ht'],
+                    'total_ht' => $ord['ht'],
+                    'tax_rate' => 18,
+                ]);
+            }
+        }
+    }
+
+    protected function seedReceipts(): void
+    {
+        if ($this->hasTable('customer_payments')) {
+            $invoices = DB::table('sales_invoices')->where('company_id', $this->company->id)->where('status', 'paid')->limit(3)->get();
+            foreach ($invoices as $invoice) {
+                try {
+                    if (DB::table('customer_payments')->where('company_id', $this->company->id)->where('sales_invoice_id', $invoice->id)->exists()) { continue; }
+                } catch (\Throwable $e) {}
+                $this->insertRow('customer_payments', [
+                    'sales_invoice_id' => $invoice->id,
+                    'client_id' => $invoice->client_id ?? null,
+                    'reference' => 'REC-' . ($invoice->id + 1000),
+                    'payment_date' => $invoice->invoice_date ?? now()->toDateString(),
+                    'payment_method' => 'Espèces',
+                    'amount' => (float) ($invoice->total_ttc ?? $invoice->amount_total ?? 0),
+                ]);
+            }
+        }
+
+        if ($this->hasTable('supplier_payments')) {
+            $invoices = DB::table('purchase_invoices')->where('company_id', $this->company->id)->where('status', 'paid')->limit(3)->get();
+            foreach ($invoices as $invoice) {
+                try {
+                    if (DB::table('supplier_payments')->where('company_id', $this->company->id)->where('purchase_invoice_id', $invoice->id)->exists()) { continue; }
+                } catch (\Throwable $e) {}
+                $this->insertRow('supplier_payments', [
+                    'purchase_invoice_id' => $invoice->id,
+                    'supplier_id' => $invoice->supplier_id ?? null,
+                    'reference' => 'RECF-' . ($invoice->id + 1000),
+                    'payment_date' => $invoice->issue_date ?? now()->toDateString(),
+                    'payment_method' => 'Virement bancaire',
+                    'amount' => (float) ($invoice->total_ttc ?? $invoice->amount_total ?? 0),
+                ]);
+            }
+        }
     }
 
     // ═══════════════════ IMMOBILISATIONS ═══════════════════

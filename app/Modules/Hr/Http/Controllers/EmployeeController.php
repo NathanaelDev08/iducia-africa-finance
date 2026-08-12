@@ -12,11 +12,17 @@ use App\Modules\Hr\Models\EmployeeDocument;
 use App\Modules\Hr\Models\Leave;
 use App\Modules\Hr\Models\Position;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class EmployeeController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('module:hr');
+    }
+
     protected function company(Request $request): Company
     {
         return $request->attributes->get('company') ?? Company::first();
@@ -172,11 +178,14 @@ class EmployeeController extends Controller
                 'contract_type' => $c->contractType->name ?? '—', 'start_date' => $c->start_date?->toDateString(),
                 'end_date' => $c->end_date?->toDateString(), 'base_salary' => (float) $c->base_salary, 'status' => $c->status]);
 
-        $leaves = Leave::where('company_id', $company->id)->with('employee')->orderByDesc('start_date')->get()
-            ->map(fn ($l) => ['id' => $l->id,
-                'employee' => ['id' => $l->employee->id, 'full_name' => trim(($l->employee->first_name ?? '') . ' ' . ($l->employee->last_name ?? '')), 'matricule' => $l->employee->matricule],
-                'leave_type' => $l->leave_type, 'start_date' => $l->start_date?->toDateString(),
-                'end_date' => $l->end_date?->toDateString(), 'days_count' => $l->days_count, 'status' => $l->status]);
+        $leaves = [];
+        if (Schema::hasTable('leaves')) {
+            $leaves = Leave::where('company_id', $company->id)->with('employee')->orderByDesc('start_date')->get()
+                ->map(fn ($l) => ['id' => $l->id,
+                    'employee' => ['id' => $l->employee->id, 'full_name' => trim(($l->employee->first_name ?? '') . ' ' . ($l->employee->last_name ?? '')), 'matricule' => $l->employee->matricule],
+                    'leave_type' => $l->leave_type, 'start_date' => $l->start_date?->toDateString(),
+                    'end_date' => $l->end_date?->toDateString(), 'days_count' => $l->days_count, 'status' => $l->status]);
+        }
 
         $documents = EmployeeDocument::with('employee')->orderByDesc('created_at')->get()
             ->map(fn ($d) => ['id' => $d->id,
