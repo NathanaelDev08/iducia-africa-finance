@@ -128,7 +128,6 @@ Route::redirect('/rh', '/hr');
 
 // ===== CRUD Comptabilité =====
 Route::middleware(['auth'])->prefix('accounting')->name('accounting.')->group(function () {
-    Route::get('/', [\App\Modules\Accounting\Http\Controllers\AccountingController::class, 'index'])->name('index');
     Route::post('/accounts', [\App\Modules\Accounting\Http\Controllers\AccountingController::class, 'storeAccount'])->name('accounts.store');
     Route::put('/accounts/{account}', [\App\Modules\Accounting\Http\Controllers\AccountingController::class, 'updateAccount'])->name('accounts.update');
     Route::delete('/accounts/{account}', [\App\Modules\Accounting\Http\Controllers\AccountingController::class, 'destroyAccount'])->name('accounts.destroy');
