@@ -330,7 +330,7 @@ Route::middleware(['auth', 'throttle:5,1'])->group(function () {
     Route::get('/password/change', [\App\Http\Controllers\Auth\ForcePasswordChangeController::class, 'show'])
         ->name('password.change');
     Route::put('/password/change', [\App\Http\Controllers\Auth\ForcePasswordChangeController::class, 'update'])
-        ->name('password.update');
+        ->name('password.force-update');
 });
 // ═══ Routes Paramètres (Settings) ═══
 Route::middleware(['auth'])->prefix('parametrage')->name('settings.')->group(function () {

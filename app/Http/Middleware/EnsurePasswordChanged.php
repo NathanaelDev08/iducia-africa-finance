@@ -16,7 +16,7 @@ class EnsurePasswordChanged
         // Routes autorisées même si mot de passe non changé
         $allowed = [
             'password.change',
-            'password.update',
+            'password.force-update',
             'profile.edit',
             'logout',
             'password.confirm',
