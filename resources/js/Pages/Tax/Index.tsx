@@ -1,5 +1,5 @@
 import ErpLayout from '@/Layouts/ErpLayout';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
 import { FilePlus2, Pencil, Plus, Trash2 } from 'lucide-react';
 
@@ -27,7 +27,6 @@ const fmt = (v: number) => (v || 0).toLocaleString('fr-FR');
 
 export default function Index({ taxes, declarations, deadlines, initialTab }: Props) {
     const [activeTab, setActiveTab] = useState<TabKey>((initialTab as TabKey) || 'taxes');
-    const flash: any = (usePage().props as any).flash;
 
     useEffect(() => {
         const url = new URL(window.location.href);
@@ -51,8 +50,6 @@ export default function Index({ taxes, declarations, deadlines, initialTab }: Pr
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Taxes, déclarations et échéances fiscales de l'entreprise active</p>
                     </div>
 
-                    {flash?.success && <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">✓ {flash.success}</div>}
-                    {flash?.error && <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">✗ {flash.error}</div>}
 
                     <div className="bg-white dark:bg-gray-800 rounded-t-lg shadow-sm border-b border-gray-200 dark:border-gray-700">
                         <nav className="flex overflow-x-auto" aria-label="Tabs">

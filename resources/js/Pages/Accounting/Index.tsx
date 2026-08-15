@@ -1,5 +1,5 @@
 import ErpLayout from '@/Layouts/ErpLayout';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 
 interface Account { id:number; number:string; name:string; class_number:number; type:string; is_active:boolean; }
@@ -14,7 +14,6 @@ const formatMoney=(v:number)=>(v||0).toLocaleString('fr-FR')+' FCFA';
 
 export default function Index({accounts=[],journals=[],fiscalYears=[],periods=[],entries=[],initialTab}:Props){
   const [tab,setTab]=useState<TabKey>((initialTab as TabKey)||'ecritures');
-  const flash=(usePage().props as any).flash;
   const tabs=[
     {key:'ecritures' as TabKey,label:'Écritures',icon:'📝'},
     {key:'accounts' as TabKey,label:'Comptes',icon:'🔢'},
@@ -28,8 +27,6 @@ export default function Index({accounts=[],journals=[],fiscalYears=[],periods=[]
       <div className="py-6"><div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-6"><h1 className="text-2xl font-bold text-gray-900">📒 Comptabilité</h1>
         <p className="text-sm text-gray-500 mt-1">Écritures, comptes, journaux, exercices et périodes</p></div>
-        {flash?.success&&<div className="mb-4 p-3 rounded bg-green-50 border border-green-200 text-green-800 text-sm">✓ {flash.success}</div>}
-        {flash?.error&&<div className="mb-4 p-3 rounded bg-red-50 border border-red-200 text-red-800 text-sm">✗ {flash.error}</div>}
 
         <div className="bg-white rounded-t-lg shadow-sm border-b"><nav className="flex">
           {tabs.map(t=>{const a=tab===t.key;return(
@@ -112,8 +109,8 @@ function AccountsTab({data}:{data:Account[]}){
       <tbody className="divide-y">{filtered.slice(0,200).map(a=>(<tr key={a.id} className="hover:bg-gray-50">
         <td className="p-2 font-mono text-xs">{a.number}</td><td className="p-2">{a.name}</td>
         <td className="p-2 text-center">{a.class_number}</td><td className="p-2 text-xs">{a.type}</td>
-        <td className="p-2 text-right"><button onClick={()=>setModal({mode:'edit',item:a})} className="text-blue-600 hover:underline text-xs mr-3">✏️</button>
-        <button onClick={()=>setDel(a)} className="text-red-600 hover:underline text-xs">🗑</button></td>
+        <td className="p-2 text-right"><button onClick={()=>setModal({mode:'edit',item:a})} aria-label={`Modifier le compte ${a.number}`} className="text-blue-600 hover:underline text-xs mr-3">✏️</button>
+        <button onClick={()=>setDel(a)} aria-label={`Supprimer le compte ${a.number}`} className="text-red-600 hover:underline text-xs">🗑</button></td>
       </tr>))}</tbody>
     </table></div>
     {modal&&<AccountModal mode={modal.mode} item={modal.mode==='edit'?modal.item:undefined} onClose={()=>setModal(null)}/>}
@@ -151,14 +148,14 @@ function JournalsTab({data}:{data:Journal[]}){
   const [del,setDel]=useState<Journal|null>(null);
   return (<div>
     <div className="flex justify-end mb-4"><button onClick={()=>setModal({mode:'create'})} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 px-4 rounded-md">+ Journal</button></div>
-    <table className="w-full text-sm"><thead className="bg-gray-50 border-b"><tr>
+    <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-gray-50 border-b"><tr>
       <th className="p-2 text-left text-xs text-gray-600 uppercase">Code</th><th className="p-2 text-left text-xs text-gray-600 uppercase">Nom</th>
       <th className="p-2 text-left text-xs text-gray-600 uppercase">Type</th><th className="p-2 text-right text-xs text-gray-600 uppercase">Actions</th></tr></thead>
       <tbody className="divide-y">{data.map(j=>(<tr key={j.id} className="hover:bg-gray-50">
         <td className="p-2 font-mono text-xs">{j.code}</td><td className="p-2">{j.name}</td><td className="p-2 text-xs">{j.type}</td>
-        <td className="p-2 text-right"><button onClick={()=>setModal({mode:'edit',item:j})} className="text-blue-600 hover:underline text-xs mr-3">✏️</button>
-        <button onClick={()=>setDel(j)} className="text-red-600 hover:underline text-xs">🗑</button></td>
-      </tr>))}</tbody></table>
+        <td className="p-2 text-right"><button onClick={()=>setModal({mode:'edit',item:j})} aria-label={`Modifier le journal ${j.name}`} className="text-blue-600 hover:underline text-xs mr-3">✏️</button>
+        <button onClick={()=>setDel(j)} aria-label={`Supprimer le journal ${j.name}`} className="text-red-600 hover:underline text-xs">🗑</button></td>
+      </tr>))}</tbody></table></div>
     {modal&&<JournalModal mode={modal.mode} item={modal.mode==='edit'?modal.item:undefined} onClose={()=>setModal(null)}/>}
     {del&&<ConfirmDelete label={del.name} onClose={()=>setDel(null)} onConfirm={()=>router.delete(route('accounting.journals.destroy',del.id))}/>}
   </div>);
@@ -186,7 +183,7 @@ function FiscalYearsTab({data}:{data:FiscalYear[]}){
   const [modal,setModal]=useState(false);
   return (<div>
     <div className="flex justify-end mb-4"><button onClick={()=>setModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 px-4 rounded-md">+ Exercice</button></div>
-    <table className="w-full text-sm"><thead className="bg-gray-50 border-b"><tr>
+    <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-gray-50 border-b"><tr>
       <th className="p-2 text-left text-xs text-gray-600 uppercase">Nom</th><th className="p-2 text-left text-xs text-gray-600 uppercase">Du</th>
       <th className="p-2 text-left text-xs text-gray-600 uppercase">Au</th><th className="p-2 text-center text-xs text-gray-600 uppercase">Statut</th>
       <th className="p-2 text-right text-xs text-gray-600 uppercase">Actions</th></tr></thead>
@@ -195,7 +192,7 @@ function FiscalYearsTab({data}:{data:FiscalYear[]}){
         <td className="p-2 text-xs">{new Date(f.end_date).toLocaleDateString('fr-FR')}</td>
         <td className="p-2 text-center"><span className={'px-2 py-1 rounded-full text-xs font-semibold '+(f.status==='open'?'bg-green-100 text-green-800':'bg-red-100 text-red-800')}>{f.status==='open'?'Ouvert':'Clôturé'}</span></td>
         <td className="p-2 text-right">{f.status==='open'&&<button onClick={()=>router.post(route('accounting.fiscal-years.close',f.id))} className="text-red-600 hover:underline text-xs">🔒 Clôturer</button>}</td>
-      </tr>))}</tbody></table>
+      </tr>))}</tbody></table></div>
     {modal&&<FiscalYearModal onClose={()=>setModal(false)}/>}
   </div>);
 }

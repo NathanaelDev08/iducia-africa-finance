@@ -1,5 +1,5 @@
 import ErpLayout from '@/Layouts/ErpLayout';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 
 interface Employee {
@@ -39,7 +39,6 @@ export default function Index({ employees, departments, stats, filters }: Props)
     const [search, setSearch] = useState(filters.search || '');
     const [status, setStatus] = useState(filters.status || '');
     const [department, setDepartment] = useState(filters.department || '');
-    const flash = (usePage().props as any).flash;
 
     const applyFilters = () => {
         router.get(route('hr.employees.index'), {
@@ -69,8 +68,6 @@ export default function Index({ employees, departments, stats, filters }: Props)
                         </button>
                     </div>
 
-                    {flash?.success && <div className="p-4 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">✓ {flash.success}</div>}
-                    {flash?.error && <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">✗ {flash.error}</div>}
 
                     {/* STATS */}
                     <div className="grid grid-cols-3 gap-4">

@@ -1,5 +1,5 @@
 import ErpLayout from '@/Layouts/ErpLayout';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 
 interface Employee { id:number; matricule:string; full_name:string; email:string|null; phone:string|null; sex:string|null; hire_date:string; status:string; department:{id:number;name:string}|null; position:{id:number;name:string}|null; }
@@ -64,11 +64,8 @@ function EmployesTab({employees,stats,allDepartments}:any){
   const [search,setSearch]=useState('');const [status,setStatus]=useState('');
   const [modal,setModal]=useState<null|{mode:'create'}|{mode:'edit';item:Employee}>(null);
   const [del,setDel]=useState<Employee|null>(null);
-  const flash=(usePage().props as any).flash;
   const filtered=employees.filter((e:Employee)=>(!search||e.full_name.toLowerCase().includes(search.toLowerCase())||e.matricule.toLowerCase().includes(search.toLowerCase()))&&(!status||e.status===status));
   return (<div>
-    {flash?.success&&<div className="mb-4 p-3 rounded bg-green-50 border border-green-200 text-green-800 text-sm">✓ {flash.success}</div>}
-    {flash?.error&&<div className="mb-4 p-3 rounded bg-red-50 border border-red-200 text-red-800 text-sm">✗ {flash.error}</div>}
     <div className="grid grid-cols-3 gap-4 mb-4">
       <div className="p-3 rounded-lg bg-indigo-50 border-l-4 border-indigo-500"><p className="text-xs text-gray-500 uppercase">Total</p><p className="text-xl font-bold">{stats.total}</p></div>
       <div className="p-3 rounded-lg bg-green-50 border-l-4 border-green-500"><p className="text-xs text-gray-500 uppercase">Actifs</p><p className="text-xl font-bold text-green-700">{stats.active}</p></div>

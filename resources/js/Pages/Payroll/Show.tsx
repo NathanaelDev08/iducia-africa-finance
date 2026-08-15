@@ -1,5 +1,5 @@
 import ErpLayout from '@/Layouts/ErpLayout';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 
 interface Payslip {
@@ -72,7 +72,6 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string
 const formatMoney = (v: number) => (v || 0).toLocaleString('fr-FR') + ' FCFA';
 
 export default function Show({ payRun, initialTab }: Props) {
-    const flash = (usePage().props as any).flash;
     const [activeTab, setActiveTab] = useState<TabKey>((initialTab as TabKey) || 'overview');
     const [confirmAction, setConfirmAction] = useState<{ label: string; route: string; color: string } | null>(null);
 
@@ -152,8 +151,6 @@ export default function Show({ payRun, initialTab }: Props) {
                             </div>
                         </div>
 
-                        {flash?.success && <div className="mt-4 p-3 rounded bg-green-50 border border-green-200 text-green-800 text-sm">✓ {flash.success}</div>}
-                        {flash?.error && <div className="mt-4 p-3 rounded bg-red-50 border border-red-200 text-red-800 text-sm">✗ {flash.error}</div>}
                     </div>
 
                     {/* BARRE D'ONGLETS */}

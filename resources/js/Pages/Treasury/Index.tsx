@@ -1,5 +1,5 @@
 import ErpLayout from '@/Layouts/ErpLayout';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 
 interface Statement { id:number; account:string; period_start:string; period_end:string; opening_balance:number; closing_balance:number; status:string; lines_count:number; matched_count:number; }
@@ -17,15 +17,12 @@ export default function Index(p: Readonly<Props>){
     setTab((p.initialTab as TabKey) || 'statements');
   }, [p.initialTab]);
   useEffect(()=>{const u=new URL(window.location.href);u.searchParams.set('tab',tab);window.history.replaceState({},'',u.toString());},[tab]);
-  const flash=(usePage().props as any).flash;
   return (
     <ErpLayout>
       <Head title="Trésorerie"/>
       <div className="py-6"><div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
         <div className="mb-6"><h1 className="text-2xl font-bold text-gray-900">🏦 Trésorerie</h1>
         <p className="mt-1 text-sm text-gray-500">Rapprochement bancaire : relevé ↔ écritures 521</p></div>
-        {flash?.success&&<div className="p-3 mb-4 text-sm text-green-800 border border-green-200 rounded bg-green-50">✓ {flash.success}</div>}
-        {flash?.error&&<div className="p-3 mb-4 text-sm text-red-800 border border-red-200 rounded bg-red-50">✗ {flash.error}</div>}
         <div className="bg-white border-b rounded-t-lg shadow-sm"><nav className="flex">
           {([{key:'statements',label:'Relevés',icon:'🏦'},{key:'reconciliation',label:'Rapprochement',icon:'🔗'},{key:'cash',label:'Caisse',icon:'💰'}] as {key:TabKey;label:string;icon:string}[]).map(t=>{const a=tab===t.key;return(
             <button type="button" key={t.key} onClick={()=>setTab(t.key)} className={'relative flex-1 py-4 px-3 text-center text-sm font-medium hover:bg-gray-50 '+(a?'text-gray-900 font-semibold':'text-gray-500')}>

@@ -1,5 +1,5 @@
 import ErpLayout from '@/Layouts/ErpLayout';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 
 interface Contract { id: number; contract_number: string; contract_type: string; start_date: string; end_date: string | null; base_salary: number; status: string; }
@@ -31,7 +31,6 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 const formatMoney = (v: number) => (v || 0).toLocaleString('fr-FR') + ' FCFA';
 
 export default function Show({ employee, departments, positions, contractTypes }: Props) {
-    const flash = (usePage().props as any).flash;
     const [showEditModal, setShowEditModal] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [confirmAction, setConfirmAction] = useState<{ label: string; route: string; color: string } | null>(null);
@@ -55,8 +54,6 @@ export default function Show({ employee, departments, positions, contractTypes }
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
                     <Link href={route('hr.employees.index')} className="text-sm text-indigo-600 hover:underline">← Retour à la liste</Link>
 
-                    {flash?.success && <div className="p-4 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">✓ {flash.success}</div>}
-                    {flash?.error && <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">✗ {flash.error}</div>}
 
                     {/* HEADER */}
                     <div className="bg-white rounded-lg shadow-sm p-6">

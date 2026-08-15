@@ -1,5 +1,5 @@
 import ErpLayout from '@/Layouts/ErpLayout';
-import { Head, usePage } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { useState } from 'react';
 import { router } from '@inertiajs/react';
 function UploadCard({title,desc,routeName,format}:{title:string;desc:string;routeName:string;format:string}){
@@ -14,11 +14,9 @@ function UploadCard({title,desc,routeName,format}:{title:string;desc:string;rout
     </form></div>);
 }
 export default function Import(){
-  const flash=(usePage().props as any).flash;
   return (<ErpLayout><Head title="Imports"/>
     <div className="py-6"><div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="mb-6"><h1 className="text-2xl font-bold text-gray-900">⬆ Imports en masse</h1><p className="text-sm text-gray-500 mt-1">Chargez vos données via CSV</p></div>
-      {flash?.success&&<div className="mb-4 p-3 rounded bg-green-50 border border-green-200 text-green-800 text-sm">✓ {flash.success}</div>}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <UploadCard title="👥 Employés" desc="Importez plusieurs employés d'un coup." routeName="import.employees" format="first_name,last_name,email,phone,hire_date"/>
         <UploadCard title="📒 Écritures comptables" desc="Importez des écritures (regroupées par référence)." routeName="import.journal" format="entry_date,journal_code,reference,description,account_number,debit,credit"/>

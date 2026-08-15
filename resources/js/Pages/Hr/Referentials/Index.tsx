@@ -1,5 +1,5 @@
 import ErpLayout from '@/Layouts/ErpLayout';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 
 interface Department { id: number; code: string; name: string; is_active: boolean; positions_count: number; employees_count: number; }
@@ -17,7 +17,6 @@ type TabKey = 'departments' | 'positions' | 'contractTypes';
 
 export default function Index({ departments, positions, contractTypes, allDepartments }: Props) {
     const [activeTab, setActiveTab] = useState<TabKey>('departments');
-    const flash = (usePage().props as any).flash;
 
     const tabs = [
         { key: 'departments' as TabKey, label: 'Départements', icon: '🏢' },
@@ -38,8 +37,6 @@ export default function Index({ departments, positions, contractTypes, allDepart
                         <Link href={route('hr.employees.index')} className="text-sm text-indigo-600 hover:underline">← Employés</Link>
                     </div>
 
-                    {flash?.success && <div className="p-4 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">✓ {flash.success}</div>}
-                    {flash?.error && <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">✗ {flash.error}</div>}
 
                     <div className="bg-white rounded-t-lg shadow-sm border-b border-gray-200">
                         <nav className="flex">

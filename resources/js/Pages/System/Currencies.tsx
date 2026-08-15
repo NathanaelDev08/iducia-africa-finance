@@ -1,10 +1,9 @@
 import ErpLayout from '@/Layouts/ErpLayout';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 interface Rate { id:number; currency_code:string; currency_name:string|null; rate_to_base:number; effective_from:string; is_active:boolean; }
 const formatMoney=(v:number)=>(v||0).toLocaleString('fr-FR');
 export default function Currencies({rates}:{rates:Rate[]}){
-  const flash=(usePage().props as any).flash;
   const [modal,setModal]=useState(false);
   const [code,setCode]=useState('EUR');const [name,setName]=useState('Euro');const [rate,setRate]=useState(655);const [from,setFrom]=useState(new Date().toISOString().slice(0,10));
   const submit=(e:React.FormEvent)=>{e.preventDefault();router.post(route('currencies.store'),{currency_code:code,currency_name:name,rate_to_base:rate,effective_from:from},{onSuccess:()=>setModal(false)});};
@@ -12,7 +11,6 @@ export default function Currencies({rates}:{rates:Rate[]}){
     <div className="py-6"><div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="mb-6 flex justify-between items-center"><div><h1 className="text-2xl font-bold text-gray-900">💱 Multi-devises</h1><p className="text-sm text-gray-500 mt-1">Taux de change vers la devise de base (XOF)</p></div>
       <button onClick={()=>setModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 px-4 rounded-md">+ Taux</button></div>
-      {flash?.success&&<div className="mb-4 p-3 rounded bg-green-50 border border-green-200 text-green-800 text-sm">✓ {flash.success}</div>}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden"><table className="w-full text-sm">
         <thead className="bg-gray-50 border-b"><tr><th className="p-3 text-left text-xs text-gray-600 uppercase">Devise</th><th className="p-3 text-left text-xs text-gray-600 uppercase">Nom</th><th className="p-3 text-right text-xs text-gray-600 uppercase">1 unité → XOF</th><th className="p-3 text-left text-xs text-gray-600 uppercase">Effectif le</th><th className="p-3 text-right text-xs text-gray-600 uppercase">Action</th></tr></thead>
         <tbody className="divide-y">{rates.length===0?<tr><td colSpan={5} className="p-8 text-center text-gray-500">Aucun taux. La devise de base est XOF.</td></tr>:rates.map(r=>(

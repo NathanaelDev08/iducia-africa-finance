@@ -1,5 +1,5 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import ErpLayout from '@/Layouts/ErpLayout';
+import { Head, Link, router } from '@inertiajs/react';
 
 interface Pivot { role?: string; is_active?: boolean; }
 interface Company { id: number; name: string; pivot?: Pivot; }
@@ -10,7 +10,6 @@ interface UserRow {
 }
 
 export default function Index({ users, roles }: { users: UserRow[]; companies: any[]; modules: any[]; roles: Record<string, string> }) {
-    const flash = (usePage().props as any).flash;
 
     const resetPassword = (u: UserRow) => {
         if (confirm(`Réinitialiser le mot de passe de ${u.name} et lui renvoyer un email ?`)) {
@@ -25,7 +24,7 @@ export default function Index({ users, roles }: { users: UserRow[]; companies: a
     };
 
     return (
-        <AuthenticatedLayout header={<></>}>
+        <ErpLayout>
             <Head title="Utilisateurs - Super Admin" />
             <div className="py-8 px-6">
                 <div className="mb-6 flex items-center justify-between">
@@ -35,8 +34,6 @@ export default function Index({ users, roles }: { users: UserRow[]; companies: a
                     </Link>
                 </div>
 
-                {flash?.success && <div className="mb-4 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-800">✓ {flash.success}</div>}
-                {flash?.error && <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">✗ {flash.error}</div>}
 
                 <div className="overflow-hidden rounded-lg bg-white shadow">
                     <table className="w-full text-sm">
@@ -82,6 +79,6 @@ export default function Index({ users, roles }: { users: UserRow[]; companies: a
                     </table>
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </ErpLayout>
     );
 }

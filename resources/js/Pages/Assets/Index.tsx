@@ -1,5 +1,5 @@
 import ErpLayout from '@/Layouts/ErpLayout';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 
 interface Asset { id:number; code:string; name:string; acquisition_date:string; acquisition_cost:number; residual_value:number; useful_life_months:number; monthly:number; status:string; accumulated:number; net_book_value:number; }
@@ -11,7 +11,6 @@ const formatMoney=(v:number)=>(v||0).toLocaleString('fr-FR')+' FCFA';
 export default function Index(p:Props){
   const [tab,setTab]=useState<TabKey>((p.initialTab as TabKey)||'assets');
   useEffect(()=>{const u=new URL(window.location.href);u.searchParams.set('tab',tab);window.history.replaceState({},'',u.toString());},[tab]);
-  const flash=(usePage().props as any).flash;
   return (
     <ErpLayout>
       <Head title="Immobilisations"/>
@@ -24,8 +23,6 @@ export default function Index(p:Props){
           <div className="p-3 rounded-lg bg-white shadow-sm border-l-4 border-red-500"><p className="text-xs text-gray-500 uppercase">Amortissements</p><p className="text-lg font-bold text-red-700">{formatMoney(p.stats.accumulated)}</p></div>
           <div className="p-3 rounded-lg bg-white shadow-sm border-l-4 border-green-500"><p className="text-xs text-gray-500 uppercase">Valeur nette</p><p className="text-lg font-bold text-green-700">{formatMoney(p.stats.net_value)}</p></div>
         </div>
-        {flash?.success&&<div className="mb-4 p-3 rounded bg-green-50 border border-green-200 text-green-800 text-sm">✓ {flash.success}</div>}
-        {flash?.error&&<div className="mb-4 p-3 rounded bg-red-50 border border-red-200 text-red-800 text-sm">✗ {flash.error}</div>}
         <div className="bg-white rounded-t-lg shadow-sm border-b"><nav className="flex">
           {([{key:'assets',label:'Actifs',icon:'🏗️'},{key:'depreciations',label:'Amortissements',icon:'📉'}] as {key:TabKey;label:string;icon:string}[]).map(t=>{const a=tab===t.key;return(
             <button key={t.key} onClick={()=>setTab(t.key)} className={'relative flex-1 py-4 px-3 text-center text-sm font-medium hover:bg-gray-50 '+(a?'text-gray-900 font-semibold':'text-gray-500')}>
@@ -63,8 +60,8 @@ function AssetsTab({assets}:{assets:Asset[]}){
           <td className="p-2 text-right font-mono">{formatMoney(a.monthly)}</td>
           <td className="p-2 text-right font-mono text-red-700">{formatMoney(a.accumulated)}</td>
           <td className="p-2 text-right font-mono font-semibold text-green-700">{formatMoney(a.net_book_value)}</td>
-          <td className="p-2 text-right"><button onClick={()=>setModal({mode:'edit',item:a})} className="text-blue-600 hover:underline text-xs mr-3">✏️</button>
-          <button onClick={()=>setDel(a)} className="text-red-600 hover:underline text-xs">🗑</button></td>
+          <td className="p-2 text-right"><button onClick={()=>setModal({mode:'edit',item:a})} aria-label={`Modifier l'immobilisation ${a.name}`} className="text-blue-600 hover:underline text-xs mr-3">✏️</button>
+          <button onClick={()=>setDel(a)} aria-label={`Supprimer l'immobilisation ${a.name}`} className="text-red-600 hover:underline text-xs">🗑</button></td>
         </tr>))}</tbody></table></div>
     {modal&&<AssetModal mode={modal.mode} item={modal.mode==='edit'?modal.item:undefined} onClose={()=>setModal(null)}/>}
     {del&&<ConfirmDelete label={del.name} onClose={()=>setDel(null)} onConfirm={()=>router.delete(route('assets.destroy',del.id))}/>}

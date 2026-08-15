@@ -1,5 +1,5 @@
 import ErpLayout from '@/Layouts/ErpLayout';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 
 interface CashRegister { id:number; period_start:string; period_end:string; opening_balance:number; closing_balance:number; status:string; transactions_count:number; }
@@ -13,7 +13,6 @@ export default function Index(p: Readonly<Props>) {
   const [transactionModal, setTransactionModal] = useState(false);
   const [importing, setImporting] = useState(false);
   const [file, setFile] = useState<File|null>(null);
-  const [flash] = useState((usePage().props as any).flash);
   const selectedRegister = p.cashRegisters.find((r) => r.id === selectedId) ?? null;
   const exportUrl = selectedId ? route('treasury.cash.export', { format: 'csv', register_id: selectedId }) : '#';
 
@@ -52,8 +51,6 @@ export default function Index(p: Readonly<Props>) {
             <p className="mt-1 text-sm text-gray-500">Gérez les sessions de caisse, les transactions et import/export de fichiers.</p>
           </div>
 
-          {flash?.success && <div className="p-3 mb-4 text-sm text-green-800 border border-green-200 rounded bg-green-50">✓ {flash.success}</div>}
-          {flash?.error && <div className="p-3 mb-4 text-sm text-red-800 border border-red-200 rounded bg-red-50">✗ {flash.error}</div>}
 
           <div className="flex flex-wrap gap-3 mb-6">
             <button type="button" onClick={() => setRegisterModal(true)} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700">+ Session de caisse</button>

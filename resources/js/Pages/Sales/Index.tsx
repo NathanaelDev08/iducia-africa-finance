@@ -1,5 +1,5 @@
 import ErpLayout from '@/Layouts/ErpLayout';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 
 interface Client { id:number; code:string; name:string; contact_name:string|null; email:string|null; phone:string|null; tax_number:string|null; account_number:string|null; is_active:boolean; }
@@ -17,7 +17,6 @@ const INVOICE_STATUS: Record<string,{label:string;color:string}> = { draft:{labe
 export default function Index(p:Props){
   const [tab,setTab]=useState<TabKey>((p.initialTab as TabKey)||'clients');
   useEffect(()=>{const u=new URL(window.location.href);u.searchParams.set('tab',tab);window.history.replaceState({},'',u.toString());},[tab]);
-  const flash=(usePage().props as any).flash;
   const tabs=[
     {key:'clients' as TabKey,label:'Clients',icon:'🤝'},
     {key:'orders' as TabKey,label:'Devis',icon:'📑'},
@@ -36,8 +35,6 @@ export default function Index(p:Props){
           <div className="p-3 rounded-lg bg-white shadow-sm border-l-4 border-purple-500"><p className="text-xs text-gray-500 uppercase">Factures</p><p className="text-xl font-bold">{p.stats.invoices_count}</p></div>
           <div className="p-3 rounded-lg bg-white shadow-sm border-l-4 border-orange-500"><p className="text-xs text-gray-500 uppercase">À encaisser</p><p className="text-lg font-bold text-orange-700">{formatMoney(p.stats.uncollected_total)}</p></div>
         </div>
-        {flash?.success&&<div className="mb-4 p-3 rounded bg-green-50 border border-green-200 text-green-800 text-sm">✓ {flash.success}</div>}
-        {flash?.error&&<div className="mb-4 p-3 rounded bg-red-50 border border-red-200 text-red-800 text-sm">✗ {flash.error}</div>}
         <div className="bg-white rounded-t-lg shadow-sm border-b"><nav className="flex">
           {tabs.map(t=>{const a=tab===t.key;return(
             <button key={t.key} onClick={()=>setTab(t.key)} className={'relative flex-1 py-4 px-3 text-center text-sm font-medium hover:bg-gray-50 '+(a?'text-gray-900 font-semibold':'text-gray-500')}>

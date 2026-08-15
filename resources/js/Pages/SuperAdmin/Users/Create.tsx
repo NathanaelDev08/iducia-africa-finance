@@ -1,4 +1,4 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ErpLayout from '@/Layouts/ErpLayout';
 import { Head, useForm } from '@inertiajs/react';
 
 interface Company { id: number; name: string; }
@@ -23,7 +23,7 @@ export default function Create({ companies, modules, roles }: { companies: Compa
     };
 
     return (
-        <AuthenticatedLayout header={<></>}>
+        <ErpLayout>
             <Head title="Nouvel utilisateur" />
             <div className="mx-auto max-w-2xl py-8 px-6">
                 <h1 className="mb-1 text-2xl font-bold">👤 Créer un utilisateur</h1>
@@ -82,6 +82,6 @@ export default function Create({ companies, modules, roles }: { companies: Compa
                     </div>
                 </form>
             </div>
-        </AuthenticatedLayout>
+        </ErpLayout>
     );
 }
