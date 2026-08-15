@@ -1,6 +1,8 @@
 import ErpLayout from '@/Layouts/ErpLayout';
 import { Head, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
+import ViewSwitcher, { ViewMode } from '@/Components/ViewSwitcher';
+import KanbanBoard from '@/Components/KanbanBoard';
 
 interface Asset { id:number; code:string; name:string; acquisition_date:string; acquisition_cost:number; residual_value:number; useful_life_months:number; monthly:number; status:string; accumulated:number; net_book_value:number; }
 interface Dep { id:number; asset:{code:string;name:string}; period:string; amount:number; accumulated:number; net_book_value:number; status:string; is_posted:boolean; }
@@ -90,11 +92,14 @@ function AssetModal({mode,item,onClose}:{mode:'create'|'edit';item?:Asset;onClos
 
 function DepTab({depreciations,currentPeriod}:{depreciations:Dep[];currentPeriod:string}){
   const [period,setPeriod]=useState(currentPeriod);
+  const [view,setView]=useState<ViewMode>('list');
   return (<div>
     <div className="flex gap-3 items-center mb-4">
       <input type="month" value={period} onChange={e=>setPeriod(e.target.value)} className="rounded-md border-gray-300 text-sm"/>
       <button onClick={()=>router.post(route('assets.generate'),{period})} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 px-4 rounded-md">⚙️ Générer les dotations</button>
+      <div className="ml-auto"><ViewSwitcher value={view} onChange={setView}/></div>
     </div>
+    {view==='list'?(
     <div className="overflow-x-auto"><table className="w-full text-sm">
       <thead className="bg-gray-50 border-b"><tr>
         <th className="p-2 text-left text-xs text-gray-600 uppercase">Période</th><th className="p-2 text-left text-xs text-gray-600 uppercase">Actif</th>
@@ -110,6 +115,35 @@ function DepTab({depreciations,currentPeriod}:{depreciations:Dep[];currentPeriod
           <td className="p-2 text-center">{d.is_posted?<span className="px-2 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">📊 Comptabilisé</span>:<span className="px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Brouillon</span>}</td>
           <td className="p-2 text-right">{!d.is_posted&&<button onClick={()=>router.post(route('assets.post',d.id))} className="text-purple-600 hover:underline text-xs">📊 Comptabiliser</button>}</td>
         </tr>))}</tbody></table></div>
+    ):(
+    <KanbanBoard
+      data={depreciations}
+      rowKey={(d)=>d.id}
+      groupBy={(d)=>d.is_posted?'posted':'draft'}
+      columns={[
+        {key:'draft',label:'Brouillon',colorClass:'bg-yellow-100 text-yellow-800'},
+        {key:'posted',label:'Comptabilisé',colorClass:'bg-purple-100 text-purple-800'},
+      ]}
+      emptyMessage="Aucune dotation. Générez-les pour une période."
+      renderCard={(d)=>(
+        <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-xs font-semibold">{d.period}</span>
+            {d.is_posted?<span className="px-2 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">📊 Comptabilisé</span>:<span className="px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Brouillon</span>}
+          </div>
+          <div className="mt-1 font-medium text-gray-900">{d.asset.name}</div>
+          <div className="mt-2 text-xs">Dotation <span className="font-mono font-semibold">{formatMoney(d.amount)}</span></div>
+          <div className="mt-1 flex items-center justify-between text-xs">
+            <span className="text-red-700">Cumul {formatMoney(d.accumulated)}</span>
+            <span className="font-semibold text-green-700">VNC {formatMoney(d.net_book_value)}</span>
+          </div>
+          {!d.is_posted&&<div className="mt-3 flex border-t border-gray-100 pt-2 text-xs">
+            <button onClick={()=>router.post(route('assets.post',d.id))} className="text-purple-600 hover:underline">📊 Comptabiliser</button>
+          </div>}
+        </div>
+      )}
+    />
+    )}
   </div>);
 }
 

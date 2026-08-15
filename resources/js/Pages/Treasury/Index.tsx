@@ -1,6 +1,8 @@
 import ErpLayout from '@/Layouts/ErpLayout';
 import { Head, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
+import ViewSwitcher, { ViewMode } from '@/Components/ViewSwitcher';
+import KanbanBoard from '@/Components/KanbanBoard';
 
 interface Statement { id:number; account:string; period_start:string; period_end:string; opening_balance:number; closing_balance:number; status:string; lines_count:number; matched_count:number; }
 interface Line { id:number; transaction_date:string; reference:string|null; description:string|null; debit:number; credit:number; net:number; status:string; is_matched:boolean; }
@@ -94,12 +96,14 @@ function StatementModal({bankAccounts,onClose}: Readonly<{bankAccounts:any[];onC
 function ReconciliationTab({selected,lines,unmatchedItems,statements}: Readonly<{selected:Statement|null;lines:Line[];unmatchedItems:BankItem[];statements:Statement[]}>){
   const [lineModal,setLineModal]=useState(false);
   const [matchFor,setMatchFor]=useState<Line|null>(null);
+  const [view,setView]=useState<ViewMode>('list');
   if(!selected) return <div className="p-8 text-center text-gray-500">Créez d'abord un relevé dans l'onglet « Relevés ».</div>;
   const totalDebit=lines.reduce((s,l)=>s+l.debit,0);
   const totalCredit=lines.reduce((s,l)=>s+l.credit,0);
   const unmatched=lines.filter(l=>!l.is_matched).length;
   return (<div>
     <div className="flex flex-wrap items-center gap-3 mb-4">
+      <ViewSwitcher value={view} onChange={setView}/>
       <select value={selected.id} onChange={e=>router.get(route('treasury.index'),{tab:'reconciliation',statement:e.target.value},{preserveState:true,preserveScroll:true,replace:true})} className="text-sm border-gray-300 rounded-md">
         {statements.map(s=><option key={s.id} value={s.id}>{s.account} · {new Date(s.period_start).toLocaleDateString('fr-FR')} → {new Date(s.period_end).toLocaleDateString('fr-FR')}</option>)}
       </select>
@@ -107,6 +111,7 @@ function ReconciliationTab({selected,lines,unmatchedItems,statements}: Readonly<
       <button type="button" onClick={()=>router.post(route('treasury.reconcile',selected.id))} disabled={unmatched>0} className="px-4 py-2 text-sm text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50">✅ Rapprocher le relevé</button>
       <div className="ml-auto text-sm text-gray-600">Débit {formatMoney(totalDebit)} · Crédit {formatMoney(totalCredit)} · <span className={unmatched>0?'text-yellow-700 font-semibold':'text-green-700 font-semibold'}>{unmatched} non rapprochée(s)</span></div>
     </div>
+    {view==='list'?(
     <div className="overflow-x-auto"><table className="w-full text-sm">
       <thead className="border-b bg-gray-50"><tr>
         <th className="p-2 text-xs text-left text-gray-600 uppercase">Date</th><th className="p-2 text-xs text-left text-gray-600 uppercase">Réf</th>
@@ -127,6 +132,38 @@ function ReconciliationTab({selected,lines,unmatchedItems,statements}: Readonly<
             <button type="button" onClick={()=>router.delete(route('treasury.lines.destroy',l.id))} className="text-xs text-red-600 hover:underline">🗑</button>
           </td>
         </tr>))}</tbody></table></div>
+    ):(
+    <KanbanBoard
+      data={lines}
+      rowKey={(l)=>l.id}
+      groupBy={(l)=>l.is_matched?'matched':'unmatched'}
+      columns={[
+        {key:'unmatched',label:'À rapprocher',colorClass:'bg-yellow-100 text-yellow-800'},
+        {key:'matched',label:'Rapprochée',colorClass:'bg-green-100 text-green-800'},
+      ]}
+      emptyMessage="Aucune ligne. Ajoutez-les ou importez le relevé."
+      renderCard={(l)=>(
+        <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-500">{new Date(l.transaction_date).toLocaleDateString('fr-FR')}</span>
+            {l.is_matched?<span className="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">🔗 Rapprochée</span>:<span className="px-2 py-1 text-xs font-semibold text-yellow-800 bg-yellow-100 rounded-full">À rapprocher</span>}
+          </div>
+          {l.reference&&<div className="mt-1 font-mono text-xs">{l.reference}</div>}
+          <div className="mt-1 text-sm text-gray-700">{l.description||'—'}</div>
+          <div className="mt-2 flex items-center justify-between text-xs font-mono">
+            <span>{l.debit>0?'Débit '+formatMoney(l.debit):''}</span>
+            <span>{l.credit>0?'Crédit '+formatMoney(l.credit):''}</span>
+          </div>
+          <div className="mt-3 flex gap-3 border-t border-gray-100 pt-2 text-xs">
+            {l.is_matched
+              ?<button type="button" onClick={()=>router.post(route('treasury.lines.unmatch',l.id))} className="text-gray-600 hover:underline">Délier</button>
+              :<button type="button" onClick={()=>setMatchFor(l)} className="text-indigo-600 hover:underline">🔗 Rapprocher</button>}
+            <button type="button" onClick={()=>router.delete(route('treasury.lines.destroy',l.id))} className="text-red-600 hover:underline">🗑 Supprimer</button>
+          </div>
+        </div>
+      )}
+    />
+    )}
     {lineModal&&<LineModal statementId={selected.id} onClose={()=>setLineModal(false)}/>}
     {matchFor&&<MatchModal line={matchFor} items={unmatchedItems} onClose={()=>setMatchFor(null)}/>}
   </div>);

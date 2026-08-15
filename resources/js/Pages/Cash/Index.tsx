@@ -1,6 +1,8 @@
 import ErpLayout from '@/Layouts/ErpLayout';
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
+import ViewSwitcher, { ViewMode } from '@/Components/ViewSwitcher';
+import KanbanBoard from '@/Components/KanbanBoard';
 
 interface CashRegister { id:number; period_start:string; period_end:string; opening_balance:number; closing_balance:number; status:string; transactions_count:number; }
 interface CashTransaction { id:number; transaction_date:string; reference:string|null; description:string|null; type:'in'|'out'; amount:number; }
@@ -13,6 +15,7 @@ export default function Index(p: Readonly<Props>) {
   const [transactionModal, setTransactionModal] = useState(false);
   const [importing, setImporting] = useState(false);
   const [file, setFile] = useState<File|null>(null);
+  const [view, setView] = useState<ViewMode>('list');
   const selectedRegister = p.cashRegisters.find((r) => r.id === selectedId) ?? null;
   const exportUrl = selectedId ? route('treasury.cash.export', { format: 'csv', register_id: selectedId }) : '#';
 
@@ -90,7 +93,13 @@ export default function Index(p: Readonly<Props>) {
             </div>
           </div>
 
-          <div className="mt-6 overflow-x-auto bg-white border rounded-lg shadow-sm">
+          <div className="mt-6 bg-white border rounded-lg shadow-sm">
+            <div className="flex items-center justify-between p-3 border-b">
+              <h2 className="text-sm font-semibold text-gray-900">Transactions</h2>
+              <ViewSwitcher value={view} onChange={setView} />
+            </div>
+            {view === 'list' ? (
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b bg-gray-50">
                 <tr>
@@ -117,6 +126,39 @@ export default function Index(p: Readonly<Props>) {
                 ))}
               </tbody>
             </table>
+            </div>
+            ) : (
+            !selectedRegister ? (
+              <div className="p-8 text-center text-gray-500">Sélectionnez une session pour afficher les transactions.</div>
+            ) : (
+            <div className="p-4">
+            <KanbanBoard
+              data={p.cashTransactions}
+              rowKey={(tx) => tx.id}
+              groupBy={(tx) => tx.type}
+              columns={[
+                { key: 'in', label: 'Entrée', colorClass: 'bg-green-100 text-green-800' },
+                { key: 'out', label: 'Sortie', colorClass: 'bg-red-100 text-red-800' },
+              ]}
+              emptyMessage="Aucune transaction pour cette session."
+              renderCard={(tx) => (
+                <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">{new Date(tx.transaction_date).toLocaleDateString('fr-FR')}</span>
+                    <span className={'px-2 py-1 rounded-full text-xs font-semibold ' + (tx.type === 'in' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800')}>{tx.type === 'in' ? 'Entrée' : 'Sortie'}</span>
+                  </div>
+                  {tx.reference && <div className="mt-1 font-mono text-xs">{tx.reference}</div>}
+                  <div className="mt-1 text-sm text-gray-700">{tx.description || '—'}</div>
+                  <div className="mt-2 font-mono text-sm font-semibold">{formatMoney(tx.amount)}</div>
+                  <div className="mt-3 flex border-t border-gray-100 pt-2 text-xs">
+                    <button type="button" onClick={() => router.delete(route('treasury.cash.transactions.destroy', tx.id))} className="text-red-600 hover:underline">Supprimer</button>
+                  </div>
+                </div>
+              )}
+            />
+            </div>
+            )
+            )}
           </div>
 
           {registerModal && <CashRegisterModal onClose={() => setRegisterModal(false)} onSuccess={handleRegisterCreated} />}

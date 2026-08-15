@@ -1,6 +1,8 @@
 import ErpLayout from '@/Layouts/ErpLayout';
 import { Head, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
+import ViewSwitcher, { ViewMode } from '@/Components/ViewSwitcher';
+import KanbanBoard from '@/Components/KanbanBoard';
 
 interface Item { id:number; code:string; name:string; category:string|null; unit:string; quantity_on_hand:number; unit_cost:number; value:number; reorder_threshold:number; below_threshold:boolean; is_active:boolean; }
 interface Movement { id:number; item:{code:string;name:string}|null; type:string; quantity:number; reference:string|null; movement_date:string; }
@@ -102,8 +104,13 @@ function ItemModal({mode,item,onClose}:{mode:'create'|'edit';item?:Item;onClose:
 
 function MovementsTab({movements,items}:{movements:Movement[];items:Item[]}){
   const [modal,setModal] = useState(false);
+  const [view,setView] = useState<ViewMode>('list');
   return (<div>
-    <div className="flex justify-end mb-4"><button onClick={()=>setModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 px-4 rounded-md">+ Mouvement</button></div>
+    <div className="flex justify-between items-center mb-4">
+      <ViewSwitcher value={view} onChange={setView}/>
+      <button onClick={()=>setModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 px-4 rounded-md">+ Mouvement</button>
+    </div>
+    {view==='list'?(
     <div className="overflow-x-auto"><table className="w-full text-sm">
       <thead className="bg-gray-50 border-b"><tr>
         <th className="p-2 text-left text-xs text-gray-600 uppercase">Date</th><th className="p-2 text-left text-xs text-gray-600 uppercase">Article</th>
@@ -121,6 +128,32 @@ function MovementsTab({movements,items}:{movements:Movement[];items:Item[]}){
           <td className="p-2 text-right font-mono">{m.quantity}</td>
           <td className="p-2 text-xs text-gray-600">{m.reference || '—'}</td>
         </tr>))}</tbody></table></div>
+    ):(
+    <KanbanBoard
+      data={movements}
+      rowKey={(m)=>m.id}
+      groupBy={(m)=>m.type}
+      columns={[
+        {key:'in',label:'Entrée',colorClass:'bg-green-100 text-green-800'},
+        {key:'out',label:'Sortie',colorClass:'bg-red-100 text-red-800'},
+        {key:'adjustment',label:'Ajustement',colorClass:'bg-blue-100 text-blue-800'},
+      ]}
+      emptyMessage="Aucun mouvement enregistré."
+      renderCard={(m)=>(
+        <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-500">{new Date(m.movement_date).toLocaleDateString('fr-FR')}</span>
+            <span className={'px-2 py-1 rounded-full text-xs font-semibold '+(m.type==='in'?'bg-green-100 text-green-800':m.type==='out'?'bg-red-100 text-red-800':'bg-blue-100 text-blue-800')}>
+              {typeLabel[m.type] || m.type}
+            </span>
+          </div>
+          <div className="mt-1 font-medium text-gray-900">{m.item ? `${m.item.code} · ${m.item.name}` : '—'}</div>
+          <div className="mt-2 font-mono text-sm font-semibold">{m.quantity}</div>
+          {m.reference && <div className="mt-1 text-xs text-gray-500">Réf. {m.reference}</div>}
+        </div>
+      )}
+    />
+    )}
     {modal && <MovementModal items={items} onClose={()=>setModal(false)}/>}
   </div>);
 }

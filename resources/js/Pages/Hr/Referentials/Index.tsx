@@ -1,6 +1,8 @@
 import ErpLayout from '@/Layouts/ErpLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import ViewSwitcher, { ViewMode } from '@/Components/ViewSwitcher';
+import KanbanBoard from '@/Components/KanbanBoard';
 
 interface Department { id: number; code: string; name: string; is_active: boolean; positions_count: number; employees_count: number; }
 interface Position { id: number; code: string; name: string; is_active: boolean; department: { id: number; name: string } | null; employees_count: number; }
@@ -65,38 +67,76 @@ export default function Index({ departments, positions, contractTypes, allDepart
 }
 
 /* ===== DÉPARTEMENTS ===== */
+const DEPT_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+    active: { label: 'Actif', color: 'bg-green-100 text-green-800' },
+    inactive: { label: 'Inactif', color: 'bg-red-100 text-red-800' },
+};
+
 function DepartmentsTab({ data }: { data: Department[] }) {
     const [modal, setModal] = useState<{ mode: 'create' } | { mode: 'edit'; item: Department } | null>(null);
     const [confirmDelete, setConfirmDelete] = useState<Department | null>(null);
+    const [view, setView] = useState<ViewMode>('list');
 
     return (
         <div>
-            <div className="flex justify-end mb-4">
+            <div className="flex justify-between items-center mb-4">
+                <ViewSwitcher value={view} onChange={setView} />
                 <button onClick={() => setModal({ mode: 'create' })} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 px-4 rounded-md">+ Ajouter</button>
             </div>
-            <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b"><tr>
-                    <th className="p-3 text-left text-xs text-gray-600 uppercase">Code</th>
-                    <th className="p-3 text-left text-xs text-gray-600 uppercase">Nom</th>
-                    <th className="p-3 text-center text-xs text-gray-600 uppercase">Postes</th>
-                    <th className="p-3 text-center text-xs text-gray-600 uppercase">Employés</th>
-                    <th className="p-3 text-right text-xs text-gray-600 uppercase">Actions</th>
-                </tr></thead>
-                <tbody className="divide-y">
-                    {data.map((d) => (
-                        <tr key={d.id} className="hover:bg-gray-50">
-                            <td className="p-3 font-mono text-xs">{d.code}</td>
-                            <td className="p-3 font-medium">{d.name}</td>
-                            <td className="p-3 text-center">{d.positions_count}</td>
-                            <td className="p-3 text-center">{d.employees_count}</td>
-                            <td className="p-3 text-right">
-                                <button onClick={() => setModal({ mode: 'edit', item: d })} className="text-blue-600 hover:underline text-xs mr-3">✏️ Modifier</button>
-                                <button onClick={() => setConfirmDelete(d)} className="text-red-600 hover:underline text-xs">🗑 Supprimer</button>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+            {view === 'list' ? (
+                <table className="w-full text-sm">
+                    <thead className="bg-gray-50 border-b"><tr>
+                        <th className="p-3 text-left text-xs text-gray-600 uppercase">Code</th>
+                        <th className="p-3 text-left text-xs text-gray-600 uppercase">Nom</th>
+                        <th className="p-3 text-center text-xs text-gray-600 uppercase">Postes</th>
+                        <th className="p-3 text-center text-xs text-gray-600 uppercase">Employés</th>
+                        <th className="p-3 text-right text-xs text-gray-600 uppercase">Actions</th>
+                    </tr></thead>
+                    <tbody className="divide-y">
+                        {data.map((d) => (
+                            <tr key={d.id} className="hover:bg-gray-50">
+                                <td className="p-3 font-mono text-xs">{d.code}</td>
+                                <td className="p-3 font-medium">{d.name}</td>
+                                <td className="p-3 text-center">{d.positions_count}</td>
+                                <td className="p-3 text-center">{d.employees_count}</td>
+                                <td className="p-3 text-right">
+                                    <button onClick={() => setModal({ mode: 'edit', item: d })} className="text-blue-600 hover:underline text-xs mr-3">✏️ Modifier</button>
+                                    <button onClick={() => setConfirmDelete(d)} className="text-red-600 hover:underline text-xs">🗑 Supprimer</button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            ) : (
+                <KanbanBoard
+                    data={data}
+                    rowKey={(d) => d.id}
+                    groupBy={(d) => (d.is_active ? 'active' : 'inactive')}
+                    columns={Object.entries(DEPT_STATUS_CONFIG).map(([key, cfg]) => ({ key, label: cfg.label, colorClass: cfg.color }))}
+                    emptyMessage="Aucun département"
+                    renderCard={(d) => {
+                        const cfg = DEPT_STATUS_CONFIG[d.is_active ? 'active' : 'inactive'];
+                        return (
+                            <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+                                <div className="flex items-start justify-between gap-2">
+                                    <div>
+                                        <div className="font-medium text-gray-900">{d.name}</div>
+                                        <div className="font-mono text-xs text-gray-500">{d.code}</div>
+                                    </div>
+                                    <span className={'px-2 py-1 rounded-full text-xs font-semibold ' + cfg.color}>{cfg.label}</span>
+                                </div>
+                                <div className="mt-2 text-xs text-gray-600">
+                                    {d.positions_count} poste{d.positions_count > 1 ? 's' : ''} · {d.employees_count} employé{d.employees_count > 1 ? 's' : ''}
+                                </div>
+                                <div className="mt-3 flex gap-3 border-t border-gray-100 pt-2 text-xs">
+                                    <button onClick={() => setModal({ mode: 'edit', item: d })} className="text-blue-600 hover:underline">✏️ Modifier</button>
+                                    <button onClick={() => setConfirmDelete(d)} className="text-red-600 hover:underline">🗑 Supprimer</button>
+                                </div>
+                            </div>
+                        );
+                    }}
+                />
+            )}
             {modal && <DepartmentModal mode={modal.mode} item={modal.mode === 'edit' ? modal.item : undefined} onClose={() => setModal(null)} />}
             {confirmDelete && <ConfirmDelete label={confirmDelete.name} onClose={() => setConfirmDelete(null)} onConfirm={() => router.delete(route('hr.referentials.departments.destroy', confirmDelete.id))} />}
         </div>
@@ -126,37 +166,81 @@ function DepartmentModal({ mode, item, onClose }: { mode: 'create' | 'edit'; ite
 }
 
 /* ===== POSTES ===== */
+const DEPT_COLOR_PALETTE = [
+    'bg-indigo-100 text-indigo-800',
+    'bg-blue-100 text-blue-800',
+    'bg-purple-100 text-purple-800',
+    'bg-teal-100 text-teal-800',
+    'bg-amber-100 text-amber-800',
+    'bg-pink-100 text-pink-800',
+];
+const NO_DEPT_KEY = '__none__';
+
 function PositionsTab({ data, allDepartments }: { data: Position[]; allDepartments: { id: number; name: string }[] }) {
     const [modal, setModal] = useState<{ mode: 'create' } | { mode: 'edit'; item: Position } | null>(null);
     const [confirmDelete, setConfirmDelete] = useState<Position | null>(null);
+    const [view, setView] = useState<ViewMode>('list');
+
+    const deptNames = Array.from(new Set(data.filter((p) => p.department).map((p) => p.department!.name)));
+    const kanbanColumns = [
+        ...deptNames.map((name, i) => ({ key: name, label: name, colorClass: DEPT_COLOR_PALETTE[i % DEPT_COLOR_PALETTE.length] })),
+        { key: NO_DEPT_KEY, label: 'Sans département', colorClass: 'bg-gray-100 text-gray-800' },
+    ];
+
     return (
         <div>
-            <div className="flex justify-end mb-4">
+            <div className="flex justify-between items-center mb-4">
+                <ViewSwitcher value={view} onChange={setView} />
                 <button onClick={() => setModal({ mode: 'create' })} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 px-4 rounded-md">+ Ajouter</button>
             </div>
-            <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b"><tr>
-                    <th className="p-3 text-left text-xs text-gray-600 uppercase">Code</th>
-                    <th className="p-3 text-left text-xs text-gray-600 uppercase">Nom</th>
-                    <th className="p-3 text-left text-xs text-gray-600 uppercase">Département</th>
-                    <th className="p-3 text-center text-xs text-gray-600 uppercase">Employés</th>
-                    <th className="p-3 text-right text-xs text-gray-600 uppercase">Actions</th>
-                </tr></thead>
-                <tbody className="divide-y">
-                    {data.map((p) => (
-                        <tr key={p.id} className="hover:bg-gray-50">
-                            <td className="p-3 font-mono text-xs">{p.code}</td>
-                            <td className="p-3 font-medium">{p.name}</td>
-                            <td className="p-3 text-xs">{p.department?.name || '—'}</td>
-                            <td className="p-3 text-center">{p.employees_count}</td>
-                            <td className="p-3 text-right">
-                                <button onClick={() => setModal({ mode: 'edit', item: p })} className="text-blue-600 hover:underline text-xs mr-3">✏️ Modifier</button>
-                                <button onClick={() => setConfirmDelete(p)} className="text-red-600 hover:underline text-xs">🗑 Supprimer</button>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+            {view === 'list' ? (
+                <table className="w-full text-sm">
+                    <thead className="bg-gray-50 border-b"><tr>
+                        <th className="p-3 text-left text-xs text-gray-600 uppercase">Code</th>
+                        <th className="p-3 text-left text-xs text-gray-600 uppercase">Nom</th>
+                        <th className="p-3 text-left text-xs text-gray-600 uppercase">Département</th>
+                        <th className="p-3 text-center text-xs text-gray-600 uppercase">Employés</th>
+                        <th className="p-3 text-right text-xs text-gray-600 uppercase">Actions</th>
+                    </tr></thead>
+                    <tbody className="divide-y">
+                        {data.map((p) => (
+                            <tr key={p.id} className="hover:bg-gray-50">
+                                <td className="p-3 font-mono text-xs">{p.code}</td>
+                                <td className="p-3 font-medium">{p.name}</td>
+                                <td className="p-3 text-xs">{p.department?.name || '—'}</td>
+                                <td className="p-3 text-center">{p.employees_count}</td>
+                                <td className="p-3 text-right">
+                                    <button onClick={() => setModal({ mode: 'edit', item: p })} className="text-blue-600 hover:underline text-xs mr-3">✏️ Modifier</button>
+                                    <button onClick={() => setConfirmDelete(p)} className="text-red-600 hover:underline text-xs">🗑 Supprimer</button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            ) : (
+                <KanbanBoard
+                    data={data}
+                    rowKey={(p) => p.id}
+                    groupBy={(p) => p.department?.name || NO_DEPT_KEY}
+                    columns={kanbanColumns}
+                    emptyMessage="Aucun poste"
+                    renderCard={(p) => (
+                        <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+                            <div>
+                                <div className="font-medium text-gray-900">{p.name}</div>
+                                <div className="font-mono text-xs text-gray-500">{p.code}</div>
+                            </div>
+                            <div className="mt-2 text-xs text-gray-600">
+                                {p.employees_count} employé{p.employees_count > 1 ? 's' : ''}
+                            </div>
+                            <div className="mt-3 flex gap-3 border-t border-gray-100 pt-2 text-xs">
+                                <button onClick={() => setModal({ mode: 'edit', item: p })} className="text-blue-600 hover:underline">✏️ Modifier</button>
+                                <button onClick={() => setConfirmDelete(p)} className="text-red-600 hover:underline">🗑 Supprimer</button>
+                            </div>
+                        </div>
+                    )}
+                />
+            )}
             {modal && <PositionModal mode={modal.mode} item={modal.mode === 'edit' ? modal.item : undefined} allDepartments={allDepartments} onClose={() => setModal(null)} />}
             {confirmDelete && <ConfirmDelete label={confirmDelete.name} onClose={() => setConfirmDelete(null)} onConfirm={() => router.delete(route('hr.referentials.positions.destroy', confirmDelete.id))} />}
         </div>
