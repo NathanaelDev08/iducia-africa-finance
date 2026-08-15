@@ -9,7 +9,6 @@ use Inertia\Inertia;
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION]);
 });
@@ -21,6 +20,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/comptabilite', [\App\Http\Controllers\Inertia\ComptabiliteController::class, 'ecritures'])->name('accounting.index');
     Route::get('/comptabilite/ecritures/nouvelle', [\App\Http\Controllers\Inertia\ComptabiliteController::class, 'createEcriture'])->name('accounting.ecritures.create');
     Route::post('/comptabilite/ecritures', [\App\Http\Controllers\Inertia\ComptabiliteController::class, 'storeEcriture'])->name('accounting.ecritures.store');
+    Route::post('/comptabilite/ecritures/{entry}/valider', [\App\Http\Controllers\Inertia\ComptabiliteController::class, 'validateEcriture'])->name('accounting.ecritures.validate');
+    Route::post('/comptabilite/ecritures/{entry}/contre-passer', [\App\Http\Controllers\Inertia\ComptabiliteController::class, 'reverseEcriture'])->name('accounting.ecritures.reverse');
     Route::get('/comptabilite/plan-comptable', [\App\Http\Controllers\Inertia\ComptabiliteController::class, 'planComptable'])->name('accounting.plan');
     Route::get('/comptabilite/journaux', [\App\Http\Controllers\Inertia\ComptabiliteController::class, 'journaux'])->name('accounting.journals');
     Route::get('/comptabilite/balance', [\App\Http\Controllers\Inertia\ComptabiliteController::class, 'balance'])->name('accounting.balance');
@@ -52,9 +53,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Routes SaaS (Entreprises)
-    Route::get('/companies', [\App\Http\Controllers\Saas\CompanyController::class, 'index'])->name('companies.index');
-    Route::post('/companies/{company}/switch', [\App\Http\Controllers\Saas\CompanyController::class, 'switch'])->name('companies.switch');
 });
 
 require __DIR__.'/auth.php';
@@ -197,6 +195,15 @@ Route::middleware(['auth'])->prefix('immobilisations')->name('assets.')->group(f
     Route::post('/depreciations/{depreciation}/post', [\App\Modules\Assets\Http\Controllers\AssetsController::class, 'postDepreciation'])->name('post');
 });
 
+// ===== Module Stock & Inventaire =====
+Route::middleware(['auth'])->prefix('stock')->name('inventory.')->group(function () {
+    Route::get('/', [\App\Modules\Inventory\Http\Controllers\InventoryController::class, 'index'])->name('index');
+    Route::post('/items', [\App\Modules\Inventory\Http\Controllers\InventoryController::class, 'storeItem'])->name('items.store');
+    Route::put('/items/{item}', [\App\Modules\Inventory\Http\Controllers\InventoryController::class, 'updateItem'])->name('items.update');
+    Route::delete('/items/{item}', [\App\Modules\Inventory\Http\Controllers\InventoryController::class, 'destroyItem'])->name('items.destroy');
+    Route::post('/movements', [\App\Modules\Inventory\Http\Controllers\InventoryController::class, 'storeMovement'])->name('movements.store');
+});
+
 // ===== Module Trésorerie =====
 Route::middleware(['auth'])->prefix('tresorerie')->name('treasury.')->group(function () {
     Route::get('/', [\App\Modules\Treasury\Http\Controllers\TreasuryController::class, 'index'])->name('index');
@@ -251,22 +258,9 @@ Route::middleware(['auth'])->patch('/profile/avatar', [\App\Http\Controllers\Pro
 // ===== Module Paramétrage (Settings) =====
 Route::middleware(['auth'])->prefix('parametrage')->name('settings.')->group(function () {
     Route::get('/', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'index'])->name('index');
-    Route::put('/general', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'updateGeneral'])->name('general.update');
     Route::post('/taxes', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'storeTax'])->name('taxes.store');
     Route::put('/taxes/{tax}', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'updateTax'])->name('taxes.update');
     Route::delete('/taxes/{tax}', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'destroyTax'])->name('taxes.destroy');
-    Route::put('/sequences/{sequence}', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'updateSequence'])->name('sequences.update');
-    Route::post('/users', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'storeUser'])->name('users.store');
-    Route::put('/users/{user}', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'updateUser'])->name('users.update');
-});
-
-// ===== Paramétrage : Devises + Imports =====
-Route::middleware(['auth'])->prefix('parametrage')->name('settings.')->group(function () {
-    Route::post('/devises', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'storeRate'])->name('rates.store');
-    Route::put('/devises/{rate}', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'updateRate'])->name('rates.update');
-    Route::delete('/devises/{rate}', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'destroyRate'])->name('rates.destroy');
-    Route::post('/imports/employes', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'importEmployees'])->name('import.employees');
-    Route::post('/imports/ecritures', [\App\Modules\Settings\Http\Controllers\SettingsController::class, 'importJournal'])->name('import.journal');
 });
 
 // ===== Bulletin : aperçu (stream) + suppression =====
@@ -315,10 +309,10 @@ Route::middleware(['auth'])->prefix('documents')->name('documents.')->group(func
 });
 
 // ===== TÉLÉMÉTRIE (PROPRIÉTAIRE UNIQUEMENT — ne jamais lier dans l'UI) =====
-Route::get('/._fiducia/insights/{token}', [\App\Http\Controllers\TelemetryController::class, 'index'])->name('telemetry.view');
-Route::get('/._fiducia/insights/{token}/json', [\App\Http\Controllers\TelemetryController::class, 'json'])->name('telemetry.json');
-Route::get('/._fiducia/insights/{token}/realtime', [\App\Http\Controllers\TelemetryController::class, 'realtime'])->name('telemetry.realtime');
-Route::get('/._fiducia/insights/{token}/export', [\App\Http\Controllers\TelemetryController::class, 'export'])->name('telemetry.export');
+Route::get('/._fiducia/insights/{token}', [\App\Http\Controllers\TelemetryController::class, 'index'])->middleware('throttle:60,1')->name('telemetry.view');
+Route::get('/._fiducia/insights/{token}/json', [\App\Http\Controllers\TelemetryController::class, 'json'])->middleware('throttle:60,1')->name('telemetry.json');
+Route::get('/._fiducia/insights/{token}/realtime', [\App\Http\Controllers\TelemetryController::class, 'realtime'])->middleware('throttle:60,1')->name('telemetry.realtime');
+Route::get('/._fiducia/insights/{token}/export', [\App\Http\Controllers\TelemetryController::class, 'export'])->middleware('throttle:60,1')->name('telemetry.export');
 Route::post('/._fiducia/insights/{token}/companies/{id}/block', [\App\Http\Controllers\TelemetryController::class, 'blockCompany'])->middleware('throttle:sensitive')->name('telemetry.block');
 Route::post('/._fiducia/insights/{token}/companies/{id}/unblock', [\App\Http\Controllers\TelemetryController::class, 'unblockCompany'])->middleware('throttle:sensitive')->name('telemetry.unblock');
 
@@ -343,8 +337,9 @@ Route::middleware(['auth'])->prefix('parametrage')->name('settings.')->group(fun
 });
 
 // Gestion utilisateurs (admin principal)
-Route::middleware(['auth'])->prefix('super-admin')->name('um.')->group(function () {
+Route::middleware(['auth', 'super.admin'])->prefix('super-admin')->name('um.')->group(function () {
     Route::get('/users', [\App\Http\Controllers\SuperAdmin\UserManagementController::class, 'index'])->name('users.index');
+    Route::get('/users/create', [\App\Http\Controllers\SuperAdmin\UserManagementController::class, 'create'])->name('users.create');
     Route::post('/users', [\App\Http\Controllers\SuperAdmin\UserManagementController::class, 'store'])->name('users.store');
     Route::post('/users/{user}/reset-password', [\App\Http\Controllers\SuperAdmin\UserManagementController::class, 'resetPassword'])->name('users.reset');
     Route::post('/users/{user}/toggle', [\App\Http\Controllers\SuperAdmin\UserManagementController::class, 'toggle'])->name('users.toggle');

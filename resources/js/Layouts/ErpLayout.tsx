@@ -5,7 +5,7 @@ import SystemFeedback from '@/Components/SystemFeedback';
 import { PageProps } from '@/types';
 import {
     LayoutDashboard, BookOpen, Users, Wallet, Landmark, BarChart3, User, Building2,
-    LogOut, Menu, X, ChevronDown, ShoppingCart, ShoppingBag, Package, Banknote, Coins,
+    LogOut, Menu, X, ChevronDown, ShoppingCart, ShoppingBag, Package, Boxes, Banknote, Coins,
     Bell, Upload, Search, Check, Settings, FileText
 } from 'lucide-react';
 
@@ -37,6 +37,7 @@ export default function ErpLayout({ children }: PropsWithChildren) {
         { name: 'Rapports', href: route('reporting.index'), icon: BarChart3 },
         { name: 'Achats', href: route('purchasing.index'), icon: ShoppingCart },
         { name: 'Ventes', href: route('sales.index'), icon: ShoppingBag },
+        { name: 'Stock & Inventaire', href: route('inventory.index'), icon: Boxes },
         { name: 'Immobilisations', href: route('assets.index'), icon: Package },
         { name: 'Trésorerie', href: route('treasury.index'), icon: Banknote },
         { name: 'Documents', href: route('documents.index'), icon: FileText },
