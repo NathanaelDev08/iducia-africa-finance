@@ -2,6 +2,8 @@ import SettingsCrud from './SettingsCrud';
 import { useState } from 'react'; // Add this import
 import ErpLayout from '@/Layouts/ErpLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import ViewSwitcher, { ViewMode } from '@/Components/ViewSwitcher';
+import KanbanBoard from '@/Components/KanbanBoard';
 
 export default function SettingsIndex(props: any) {
     const {
@@ -434,6 +436,7 @@ function GeneralSection({ settings, company }: any) {
 
 function UserManagementSection({ users, companies, modules }: any) {
     const [showForm, setShowForm] = useState(false);
+    const [view, setView] = useState<ViewMode>('list');
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         email: '',
@@ -491,9 +494,12 @@ function UserManagementSection({ users, companies, modules }: any) {
                             <p className="text-sm text-gray-500">Créer des comptes et attribuer les modules</p>
                         </div>
                     </div>
-                    <button type="button" onClick={() => setShowForm(!showForm)} className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-md hover:bg-gray-800">
-                        {showForm ? 'Fermer' : '+ Nouvel utilisateur'}
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <ViewSwitcher value={view} onChange={setView} />
+                        <button type="button" onClick={() => setShowForm(!showForm)} className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-md hover:bg-gray-800">
+                            {showForm ? 'Fermer' : '+ Nouvel utilisateur'}
+                        </button>
+                    </div>
                 </div>
 
                 {showForm && (
@@ -569,54 +575,88 @@ function UserManagementSection({ users, companies, modules }: any) {
                     </form>
                 )}
 
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="text-xs text-left text-gray-500 uppercase border-b bg-gray-50">
-                            <tr>
-                                <th className="px-4 py-3">Utilisateur</th>
-                                <th className="px-4 py-3">Entreprises</th>
-                                <th className="px-4 py-3">Modules</th>
-                                <th className="px-4 py-3">Statut</th>
-                                <th className="px-4 py-3">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                            {users.map((u: any) => (
-                                <tr key={u.id} className="hover:bg-gray-50">
-                                    <td className="px-4 py-3">
-                                        <div className="font-medium text-gray-900">{u.name}</div>
-                                        <div className="text-sm text-gray-500">{u.email}</div>
-                                    </td>
-                                    <td className="px-4 py-3 text-sm">{u.companies?.map((c: any) => c.name).join(', ') || '—'}</td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex flex-wrap gap-1">
-                                            {u.modules?.map((m: any) => (
-                                                <span key={m.id} className="rounded bg-gray-100 px-2 py-0.5 text-xs">
-                                                    {m.icon} {m.name}
-                                                </span>
-                                            ))}
-                                            {(!u.modules || u.modules.length === 0) && <span className="text-xs text-gray-400">Aucun module</span>}
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <span className={'rounded-full px-2 py-0.5 text-xs ' + (u.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800')}>
-                                            {u.is_active ? '● Actif' : '● Inactif'}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3 space-x-2">
-                                        <button type="button" onClick={() => router.post('/super-admin/users/' + u.id + '/reset-password')} className="text-sm text-orange-600 hover:underline">Reset MDP</button>
-                                        <button type="button" onClick={() => router.post('/super-admin/users/' + u.id + '/toggle')} className="text-sm text-blue-600 hover:underline">
+                {view === 'list' ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="text-xs text-left text-gray-500 uppercase border-b bg-gray-50">
+                                <tr>
+                                    <th className="px-4 py-3">Utilisateur</th>
+                                    <th className="px-4 py-3">Entreprises</th>
+                                    <th className="px-4 py-3">Modules</th>
+                                    <th className="px-4 py-3">Statut</th>
+                                    <th className="px-4 py-3">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                                {users.map((u: any) => (
+                                    <tr key={u.id} className="hover:bg-gray-50">
+                                        <td className="px-4 py-3">
+                                            <div className="font-medium text-gray-900">{u.name}</div>
+                                            <div className="text-sm text-gray-500">{u.email}</div>
+                                        </td>
+                                        <td className="px-4 py-3 text-sm">{u.companies?.map((c: any) => c.name).join(', ') || '—'}</td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex flex-wrap gap-1">
+                                                {u.modules?.map((m: any) => (
+                                                    <span key={m.id} className="rounded bg-gray-100 px-2 py-0.5 text-xs">
+                                                        {m.icon} {m.name}
+                                                    </span>
+                                                ))}
+                                                {(!u.modules || u.modules.length === 0) && <span className="text-xs text-gray-400">Aucun module</span>}
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <span className={'rounded-full px-2 py-0.5 text-xs ' + (u.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800')}>
+                                                {u.is_active ? '● Actif' : '● Inactif'}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3 space-x-2">
+                                            <button type="button" onClick={() => router.post('/super-admin/users/' + u.id + '/reset-password')} className="text-sm text-orange-600 hover:underline">Reset MDP</button>
+                                            <button type="button" onClick={() => router.post('/super-admin/users/' + u.id + '/toggle')} className="text-sm text-blue-600 hover:underline">
+                                                {u.is_active ? 'Désactiver' : 'Activer'}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {users.length === 0 && (
+                                    <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500">Aucun utilisateur</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <div className="p-4">
+                        <KanbanBoard
+                            data={users}
+                            rowKey={(u: any) => u.id}
+                            groupBy={(u: any) => (u.is_active ? 'active' : 'inactive')}
+                            columns={[
+                                { key: 'active', label: '● Actifs', colorClass: 'bg-green-100 text-green-800' },
+                                { key: 'inactive', label: '● Inactifs', colorClass: 'bg-red-100 text-red-800' },
+                            ]}
+                            emptyMessage="Aucun utilisateur"
+                            renderCard={(u: any) => (
+                                <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                                    <div className="font-medium text-gray-900 dark:text-gray-100">{u.name}</div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">{u.email}</div>
+                                    <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">{u.companies?.map((c: any) => c.name).join(', ') || '—'}</div>
+                                    <div className="mt-2 flex flex-wrap gap-1">
+                                        {u.modules?.map((m: any) => (
+                                            <span key={m.id} className="rounded bg-gray-100 px-2 py-0.5 text-xs dark:bg-gray-700">{m.icon} {m.name}</span>
+                                        ))}
+                                        {(!u.modules || u.modules.length === 0) && <span className="text-xs text-gray-400">Aucun module</span>}
+                                    </div>
+                                    <div className="mt-3 flex gap-3 border-t border-gray-100 pt-2 text-xs dark:border-gray-700">
+                                        <button type="button" onClick={() => router.post('/super-admin/users/' + u.id + '/reset-password')} className="text-orange-600 hover:underline">Reset MDP</button>
+                                        <button type="button" onClick={() => router.post('/super-admin/users/' + u.id + '/toggle')} className="text-blue-600 hover:underline">
                                             {u.is_active ? 'Désactiver' : 'Activer'}
                                         </button>
-                                    </td>
-                                </tr>
-                            ))}
-                            {users.length === 0 && (
-                                <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500">Aucun utilisateur</td></tr>
+                                    </div>
+                                </div>
                             )}
-                        </tbody>
-                    </table>
-                </div>
+                        />
+                    </div>
+                )}
             </div>
         </div>
     );
