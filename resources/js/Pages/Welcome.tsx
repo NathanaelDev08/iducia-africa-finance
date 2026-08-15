@@ -26,9 +26,9 @@ export default function Welcome() {
     ];
 
     const steps = [
-        { icon: Users, num: '01', title: 'Créez votre compte', desc: 'Inscription en 30 secondes, aucune carte bancaire requise.' },
-        { icon: Building2, num: '02', title: 'Configurez votre entreprise', desc: 'Nom, N° fiscal, devise XOF : tout est prêt pour la Côte d\'Ivoire.' },
-        { icon: TrendingUp, num: '03', title: 'Pilotez tout au même endroit', desc: 'Compta, paie, taxes, rapports : une seule interface, zéro tableur.' },
+        { icon: Building2, num: '01', title: 'Votre entreprise est configurée', desc: 'Notre équipe active votre espace avec le plan comptable SYSCOHADA, la TVA et les cotisations CNPS déjà en place.' },
+        { icon: Users, num: '02', title: 'Vous recevez vos identifiants', desc: 'Un email avec un mot de passe temporaire, à changer dès votre première connexion.' },
+        { icon: TrendingUp, num: '03', title: 'Vous pilotez votre activité', desc: 'Compta, paie, taxes, rapports : une seule interface, zéro tableur.' },
     ];
 
     const avantages = [
@@ -51,36 +51,33 @@ export default function Welcome() {
             <Head title="FIDUCIA AFRIC — ERP Comptabilité, Paie & Fiscalité ivoirienne" />
 
             {/* ═══════════ HEADER STICKY ═══════════ */}
-            <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-100 shadow-sm">
+            <header className="sticky top-0 z-40 bg-[#1a3a6a]/95 backdrop-blur border-b border-white/10 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <img src="/images/logo.png" alt="FIDUCIA AFRIC" className="h-10 w-auto" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        <img src="/images/logo-white.png" alt="FIDUCIA AFRIC" className="h-10 w-auto" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                         <div className="leading-tight">
                             <div className="text-lg font-extrabold tracking-wide">
-                                <span className="text-[#1a3a6a]">FIDUCIA</span> <span className="text-[#b8860b]">AFRIC</span>
+                                <span className="text-white">FIDUCIA</span> <span className="text-[#e6b422]">AFRIC</span>
                             </div>
-                            <div className="text-[10px] text-gray-500 tracking-[0.2em] uppercase">Conseils & Finances</div>
+                            <div className="text-[10px] text-blue-100/70 tracking-[0.2em] uppercase">Conseils & Finances</div>
                         </div>
                     </div>
 
-                    <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
-                        <a href="#modules" className="hover:text-[#1a3a6a]">Modules</a>
-                        <a href="#avantages" className="hover:text-[#1a3a6a]">Avantages</a>
-                        <a href="#temoignages" className="hover:text-[#1a3a6a]">Témoignages</a>
+                    <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-blue-100/80">
+                        <a href="#modules" className="hover:text-white">Modules</a>
+                        <a href="#avantages" className="hover:text-white">Avantages</a>
+                        <a href="#temoignages" className="hover:text-white">Témoignages</a>
                     </nav>
 
                     <div className="flex items-center gap-2">
                         {auth.user ? (
-                            <Link href={route('dashboard')} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1a3a6a] text-white text-sm font-semibold hover:bg-[#142c52] shadow">
+                            <Link href={route('dashboard')} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-[#1a3a6a] text-sm font-semibold hover:bg-blue-50 shadow">
                                 Tableau de bord <ArrowRight className="h-4 w-4" />
                             </Link>
                         ) : (
                             <>
-                                <Link href={route('login')} className="px-4 py-2 rounded-lg border-2 border-[#1a3a6a] text-[#1a3a6a] text-sm font-semibold hover:bg-[#1a3a6a] hover:text-white transition">
-                                    Connexion
-                                </Link>
-                                <Link href={route('register')} className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#b8860b] text-white text-sm font-semibold hover:bg-[#96690a] shadow">
-                                    Essai gratuit <ArrowRight className="h-4 w-4" />
+                                <Link href={route('login')} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#b8860b] text-white text-sm font-semibold hover:bg-[#96690a] shadow">
+                                    Connexion <ArrowRight className="h-4 w-4" />
                                 </Link>
                             </>
                         )}
@@ -116,12 +113,12 @@ export default function Welcome() {
                                 </Link>
                             ) : (
                                 <>
-                                    <Link href={route('register')} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#b8860b] text-white font-bold hover:bg-[#96690a] shadow-lg">
-                                        Démarrer gratuitement <ArrowRight className="h-5 w-5" />
+                                    <Link href={route('login')} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#b8860b] text-white font-bold hover:bg-[#96690a] shadow-lg">
+                                        Se connecter <ArrowRight className="h-5 w-5" />
                                     </Link>
-                                    <Link href={route('login')} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white/10 border border-white/25 font-semibold hover:bg-white/20">
-                                        Se connecter
-                                    </Link>
+                                    <a href="mailto:contact@fiducia-africa.com" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white/10 border border-white/25 font-semibold hover:bg-white/20">
+                                        Demander un accès
+                                    </a>
                                 </>
                             )}
                         </div>
@@ -134,12 +131,14 @@ export default function Welcome() {
                     </div>
 
                     <div className="hidden lg:block">
-                        <img
-                            src="/images/branding.png"
-                            alt="FIDUCIA AFRIC — Système de gestion intégré"
-                            className="w-full max-w-md mx-auto rounded-2xl shadow-2xl border border-white/10"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                        />
+                        <div className="max-w-md mx-auto bg-white rounded-2xl shadow-2xl p-8">
+                            <img
+                                src="/images/branding.png"
+                                alt="FIDUCIA AFRIC — Système de gestion intégré"
+                                className="w-full h-auto"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -275,7 +274,7 @@ export default function Welcome() {
                 <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#1a3a6a] to-[#b8860b] p-10 lg:p-14 text-white text-center shadow-2xl">
                     <h2 className="text-3xl lg:text-4xl font-extrabold">Prêt à moderniser votre gestion ?</h2>
                     <p className="mt-4 text-blue-100 max-w-2xl mx-auto">
-                        Rejoignez les entreprises qui ont dit adieu aux tableurs et aux erreurs de calcul. Créez votre compte en moins d'une minute.
+                        Rejoignez les entreprises qui ont dit adieu aux tableurs et aux erreurs de calcul. Contactez-nous : nous configurons votre espace et vous recevez vos identifiants par email.
                     </p>
                     <div className="mt-8 flex justify-center gap-3 flex-wrap">
                         {auth.user ? (
@@ -284,9 +283,9 @@ export default function Welcome() {
                             </Link>
                         ) : (
                             <>
-                                <Link href={route('register')} className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-white text-[#1a3a6a] font-extrabold hover:bg-blue-50 shadow-lg">
-                                    Créer mon compte gratuit <ArrowRight className="h-5 w-5" />
-                                </Link>
+                                <a href="mailto:contact@fiducia-africa.com" className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-white text-[#1a3a6a] font-extrabold hover:bg-blue-50 shadow-lg">
+                                    Demander un accès <ArrowRight className="h-5 w-5" />
+                                </a>
                                 <Link href={route('login')} className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl border-2 border-white/60 font-bold hover:bg-white/10">
                                     Se connecter
                                 </Link>
