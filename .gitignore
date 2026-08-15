@@ -9,6 +9,12 @@
 .env
 .env.backup
 .env.production
+.env.*.corrected
+*.sql
+*.sql.gz
+temp_*.php
+check_auth_root.php
+generate_payslips_standalone.php
 .phpactor.json
 .phpunit.result.cache
 Homestead.json
