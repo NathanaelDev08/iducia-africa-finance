@@ -17,7 +17,7 @@ class AccountingEntryController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $company = app('currentCompany');
+        $company = app('current_company');
 
         $entries = AccountingEntry::where('company_id', $company->id)
             ->with(['journal', 'period', 'lines.account', 'validatedBy'])
@@ -43,13 +43,13 @@ class AccountingEntryController extends Controller
             'lines.*.credit' => 'required|numeric|min:0',
         ]);
 
-        $company = app('currentCompany');
+        $company = app('current_company');
         $entry = $this->entryService->createDraft($company, $data, $data['lines']);
 
         return response()->json($entry->load('lines.account'), 201);
     }
 
-    public function validate_entry(AccountingEntry $entry): JsonResponse
+    public function validate_entry(Request $request, AccountingEntry $entry): JsonResponse
     {
         $this->authorizeCompany($entry);
 
@@ -76,7 +76,7 @@ class AccountingEntryController extends Controller
 
     protected function authorizeCompany(AccountingEntry $entry): void
     {
-        $company = app('currentCompany');
+        $company = app('current_company');
 
         if ($entry->company_id !== $company->id) {
             abort(403, 'Cette écriture n\'appartient pas à l\'entreprise active.');

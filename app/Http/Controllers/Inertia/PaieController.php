@@ -19,7 +19,7 @@ class PaieController extends Controller
     public function periodes(Request $request)
     {
         $this->authorize('viewAny', PayRun::class);
-        $company = app()->bound('currentCompany') ? app('currentCompany') : null;
+        $company = app()->bound('current_company') ? app('current_company') : null;
         $payruns = $company ? PayRun::where('company_id', $company->id)
             ->withCount('payslips')
             ->latest('period_start')->get() : collect();
@@ -37,7 +37,7 @@ class PaieController extends Controller
 
     public function storePeriode(StorePayRunRequest $request)
     {
-        $company = app()->bound('currentCompany') ? app('currentCompany') : null;
+        $company = app()->bound('current_company') ? app('current_company') : null;
 
         if (!$company) {
             return back()->withErrors(['error' => 'Aucune entreprise active sélectionnée.']);
@@ -74,7 +74,7 @@ class PaieController extends Controller
 
     public function bulletins(Request $request)
     {
-        $company = app()->bound('currentCompany') ? app('currentCompany') : null;
+        $company = app()->bound('current_company') ? app('current_company') : null;
         $payslips = $company ? Payslip::where('company_id', $company->id)
             ->with(['employee', 'payRun'])
             ->latest('id')->take(50)->get() : collect();
@@ -83,7 +83,7 @@ class PaieController extends Controller
 
     public function rubriques(Request $request)
     {
-        $company = app()->bound('currentCompany') ? app('currentCompany') : null;
+        $company = app()->bound('current_company') ? app('current_company') : null;
         $items = PayItem::where(function($q) use ($company) {
             $q->whereNull('company_id')->orWhere('company_id', $company?->id);
         })->orderBy('display_order')->get();

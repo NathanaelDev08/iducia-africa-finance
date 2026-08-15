@@ -13,7 +13,7 @@ class ErpDashboardController extends Controller
     {
         // Récupération sécurisée de l'entreprise active
         // On vérifie si elle a bien été bindée par le middleware SetActiveCompany
-        $company = app()->bound('currentCompany') ? app('currentCompany') : null;
+        $company = app()->bound('current_company') ? app('current_company') : null;
 
         $data = null;
         if ($company) {

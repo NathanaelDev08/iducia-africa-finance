@@ -21,7 +21,7 @@ class RhController extends Controller
     public function employes(Request $request)
     {
         $this->authorize('viewAny', Employee::class);
-        $company = app()->bound('currentCompany') ? app('currentCompany') : null;
+        $company = app()->bound('current_company') ? app('current_company') : null;
         $employees = $company ? Employee::where('company_id', $company->id)
             ->with(['department', 'position'])
             ->orderBy('last_name')->get() : collect();
@@ -31,7 +31,7 @@ class RhController extends Controller
     public function createEmploye(Request $request)
     {
         $this->authorize('create', Employee::class);
-        $company = app()->bound('currentCompany') ? app('currentCompany') : null;
+        $company = app()->bound('current_company') ? app('current_company') : null;
 
         $departments = $company ? Department::where('company_id', $company->id)->active()->get() : collect();
         $positions = $company ? Position::where('company_id', $company->id)->active()->get() : collect();
@@ -47,7 +47,7 @@ class RhController extends Controller
 
     public function storeEmploye(StoreEmployeeRequest $request)
     {
-        $company = app()->bound('currentCompany') ? app('currentCompany') : null;
+        $company = app()->bound('current_company') ? app('current_company') : null;
 
         if (!$company) {
             return back()->withErrors(['error' => 'Aucune entreprise active sélectionnée.']);
@@ -70,7 +70,7 @@ class RhController extends Controller
 
     public function contrats(Request $request)
     {
-        $company = app()->bound('currentCompany') ? app('currentCompany') : null;
+        $company = app()->bound('current_company') ? app('current_company') : null;
         $contracts = $company ? EmployeeContract::where('company_id', $company->id)
             ->with(['employee', 'contractType'])
             ->latest('start_date')->get() : collect();
@@ -79,7 +79,7 @@ class RhController extends Controller
 
     public function departements(Request $request)
     {
-        $company = app()->bound('currentCompany') ? app('currentCompany') : null;
+        $company = app()->bound('current_company') ? app('current_company') : null;
         $departments = $company ? Department::where('company_id', $company->id)
             ->withCount('employees')
             ->orderBy('name')->get() : collect();

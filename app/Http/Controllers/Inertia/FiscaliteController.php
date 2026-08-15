@@ -10,7 +10,7 @@ class FiscaliteController extends Controller
 {
     public function declarations(Request $request)
     {
-        $company = app()->bound('currentCompany') ? app('currentCompany') : null;
+        $company = app()->bound('current_company') ? app('current_company') : null;
         $declarations = $company ? VatDeclaration::where('company_id', $company->id)
             ->latest('period_start')->get() : collect();
         return Inertia::render('Tax/Index', ['declarations' => $declarations, 'activeTab' => 'declarations']);
@@ -18,7 +18,7 @@ class FiscaliteController extends Controller
 
     public function echeancier(Request $request)
     {
-        $company = app()->bound('currentCompany') ? app('currentCompany') : null;
+        $company = app()->bound('current_company') ? app('current_company') : null;
         $deadlines = $company ? FiscalDeadline::where('company_id', $company->id)
             ->orderBy('due_date')->get() : collect();
         return Inertia::render('Tax/Echeancier', ['deadlines' => $deadlines, 'activeTab' => 'echeancier']);
