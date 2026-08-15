@@ -1,6 +1,8 @@
 import ErpLayout from '@/Layouts/ErpLayout';
 import { Head, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
+import ViewSwitcher, { ViewMode } from '@/Components/ViewSwitcher';
+import KanbanBoard from '@/Components/KanbanBoard';
 
 interface Supplier { id:number; code:string; name:string; contact_name:string|null; email:string|null; phone:string|null; tax_number:string|null; account_number:string|null; is_active:boolean; }
 interface Order { id:number; reference:string; supplier:{id:number;name:string}; order_date:string; expected_date:string|null; status:string; total_ttc:number; }
@@ -204,8 +206,13 @@ function OrderModal({suppliers,onClose}:{suppliers:Supplier[];onClose:()=>void})
 function InvoicesTab({invoices,suppliers,expenseAccounts}:{invoices:Invoice[];suppliers:Supplier[];expenseAccounts:Account[]}){
   const [modal,setModal]=useState(false);
   const [del,setDel]=useState<Invoice|null>(null);
+  const [view,setView]=useState<ViewMode>('list');
   return (<div>
-    <div className="flex justify-end mb-4"><button onClick={()=>setModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 px-4 rounded-md">+ Facture</button></div>
+    <div className="flex justify-between items-center mb-4">
+      <ViewSwitcher value={view} onChange={setView}/>
+      <button onClick={()=>setModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 px-4 rounded-md">+ Facture</button>
+    </div>
+    {view==='list'?(
     <div className="overflow-x-auto"><table className="w-full text-sm">
       <thead className="bg-gray-50 border-b"><tr>
         <th className="p-2 text-left text-xs text-gray-600 uppercase">Référence</th><th className="p-2 text-left text-xs text-gray-600 uppercase">N° four.</th>
@@ -231,6 +238,35 @@ function InvoicesTab({invoices,suppliers,expenseAccounts}:{invoices:Invoice[];su
             {!i.is_posted&&i.status==='draft'&&<button onClick={()=>setDel(i)} className="text-red-600 hover:underline text-xs">🗑</button>}
           </td>
         </tr>);})}</tbody></table></div>
+    ):(
+    <KanbanBoard
+      data={invoices}
+      rowKey={(i)=>i.id}
+      groupBy={(i)=>i.status}
+      columns={Object.entries(INVOICE_STATUS).map(([k,v])=>({key:k,label:v.label,colorClass:v.color}))}
+      emptyMessage="Aucune facture."
+      renderCard={(i)=>(
+        <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-xs font-semibold">{i.reference}</span>
+            {i.is_posted&&<span className="text-xs text-purple-700">📊</span>}
+          </div>
+          <div className="mt-1 font-medium text-gray-900">{i.supplier.name}</div>
+          {i.supplier_invoice_number&&<div className="text-xs text-gray-500">N° four. {i.supplier_invoice_number}</div>}
+          <div className="mt-1 text-xs text-gray-500">{new Date(i.invoice_date).toLocaleDateString('fr-FR')}</div>
+          <div className="mt-2 font-mono text-sm font-semibold">{formatMoney(i.total_ttc)}</div>
+          <div className="mt-1 flex items-center justify-between text-xs">
+            <span className="text-green-700">Payé {formatMoney(i.amount_paid)}</span>
+            <span className="font-semibold text-red-700">Reste {formatMoney(i.remaining)}</span>
+          </div>
+          <div className="mt-3 flex gap-3 border-t border-gray-100 pt-2 text-xs">
+            {!i.is_posted&&i.status==='draft'&&<button onClick={()=>router.post(route('purchasing.invoices.post',i.id))} className="text-purple-600 hover:underline" title="Comptabiliser">📊 Comptabiliser</button>}
+            {!i.is_posted&&i.status==='draft'&&<button onClick={()=>setDel(i)} className="text-red-600 hover:underline">🗑 Supprimer</button>}
+          </div>
+        </div>
+      )}
+    />
+    )}
     {modal&&<InvoiceModal suppliers={suppliers} expenseAccounts={expenseAccounts} onClose={()=>setModal(false)}/>}
     {del&&<ConfirmDelete label={del.reference} onClose={()=>setDel(null)} onConfirm={()=>router.delete(route('purchasing.invoices.destroy',del.id))}/>}
   </div>);

@@ -1,9 +1,12 @@
 import ErpLayout from '@/Layouts/ErpLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import ViewSwitcher, { ViewMode } from '@/Components/ViewSwitcher';
+import KanbanBoard from '@/Components/KanbanBoard';
 
 export default function Index({ auth, companies, filters }: any) {
     const [search, setSearch] = useState(filters.search || '');
+    const [view, setView] = useState<ViewMode>('list');
 
     const handleSearch = (e: any) => {
         e.preventDefault();
@@ -28,9 +31,12 @@ export default function Index({ auth, companies, filters }: any) {
             <div className="py-8 px-6">
                 <div className="mb-6 flex items-center justify-between">
                     <h1 className="text-2xl font-bold">🏢 Gestion des Entreprises</h1>
-                    <Link href="/super-admin/companies/create" className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
-                        + Nouvelle entreprise
-                    </Link>
+                    <div className="flex items-center gap-3">
+                        <ViewSwitcher value={view} onChange={setView} />
+                        <Link href="/super-admin/companies/create" className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
+                            + Nouvelle entreprise
+                        </Link>
+                    </div>
                 </div>
 
                 <form onSubmit={handleSearch} className="mb-4">
@@ -43,54 +49,85 @@ export default function Index({ auth, companies, filters }: any) {
                     />
                 </form>
 
-                <div className="overflow-hidden rounded-lg bg-white shadow">
-                    <table className="w-full">
-                        <thead className="bg-gray-50">
-                            <tr className="text-left text-sm text-gray-600">
-                                <th className="px-4 py-3">Entreprise</th>
-                                <th className="px-4 py-3">Devise</th>
-                                <th className="px-4 py-3">Utilisateurs</th>
-                                <th className="px-4 py-3">Employés</th>
-                                <th className="px-4 py-3">Abonnement</th>
-                                <th className="px-4 py-3">Statut</th>
-                                <th className="px-4 py-3">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {companies.data.map((c: any) => (
-                                <tr key={c.id} className="border-t hover:bg-gray-50">
-                                    <td className="px-4 py-3">
-                                        <Link href={`/super-admin/companies/${c.id}`} className="font-medium text-blue-600 hover:underline">
-                                            {c.name}
-                                        </Link>
-                                    </td>
-                                    <td className="px-4 py-3">{c.currency}</td>
-                                    <td className="px-4 py-3">{c.users_count || 0}</td>
-                                    <td className="px-4 py-3">{c.employees_count || 0}</td>
-                                    <td className="px-4 py-3">
-                                        {c.subscriptions?.[0]?.plan ? (
-                                            <span className="text-sm">{c.subscriptions[0].plan.name}</span>
-                                        ) : (
-                                            <span className="text-sm text-gray-400">Aucun</span>
-                                        )}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <span className={`rounded px-2 py-1 text-xs ${c.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                            {c.is_active ? 'Active' : 'Suspendue'}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3 space-x-2">
-                                        <Link href={`/super-admin/companies/${c.id}/edit`} className="text-blue-600 hover:underline">Éditer</Link>
-                                        <button onClick={() => toggleActive(c)} className={c.is_active ? 'text-orange-600' : 'text-green-600'}>
-                                            {c.is_active ? 'Suspendre' : 'Réactiver'}
-                                        </button>
-                                        <button onClick={() => deleteCompany(c)} className="text-red-600 hover:underline">Supprimer</button>
-                                    </td>
+                {view === 'list' ? (
+                    <div className="overflow-hidden rounded-lg bg-white shadow">
+                        <table className="w-full">
+                            <thead className="bg-gray-50">
+                                <tr className="text-left text-sm text-gray-600">
+                                    <th className="px-4 py-3">Entreprise</th>
+                                    <th className="px-4 py-3">Devise</th>
+                                    <th className="px-4 py-3">Utilisateurs</th>
+                                    <th className="px-4 py-3">Employés</th>
+                                    <th className="px-4 py-3">Abonnement</th>
+                                    <th className="px-4 py-3">Statut</th>
+                                    <th className="px-4 py-3">Actions</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody>
+                                {companies.data.map((c: any) => (
+                                    <tr key={c.id} className="border-t hover:bg-gray-50">
+                                        <td className="px-4 py-3">
+                                            <Link href={`/super-admin/companies/${c.id}`} className="font-medium text-blue-600 hover:underline">
+                                                {c.name}
+                                            </Link>
+                                        </td>
+                                        <td className="px-4 py-3">{c.currency}</td>
+                                        <td className="px-4 py-3">{c.users_count || 0}</td>
+                                        <td className="px-4 py-3">{c.employees_count || 0}</td>
+                                        <td className="px-4 py-3">
+                                            {c.subscriptions?.[0]?.plan ? (
+                                                <span className="text-sm">{c.subscriptions[0].plan.name}</span>
+                                            ) : (
+                                                <span className="text-sm text-gray-400">Aucun</span>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <span className={`rounded px-2 py-1 text-xs ${c.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                {c.is_active ? 'Active' : 'Suspendue'}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3 space-x-2">
+                                            <Link href={`/super-admin/companies/${c.id}/edit`} className="text-blue-600 hover:underline">Éditer</Link>
+                                            <button onClick={() => toggleActive(c)} className={c.is_active ? 'text-orange-600' : 'text-green-600'}>
+                                                {c.is_active ? 'Suspendre' : 'Réactiver'}
+                                            </button>
+                                            <button onClick={() => deleteCompany(c)} className="text-red-600 hover:underline">Supprimer</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <KanbanBoard
+                        data={companies.data}
+                        rowKey={(c: any) => c.id}
+                        groupBy={(c: any) => (c.is_active ? 'active' : 'suspended')}
+                        columns={[
+                            { key: 'active', label: 'Actives', colorClass: 'bg-green-100 text-green-800' },
+                            { key: 'suspended', label: 'Suspendues', colorClass: 'bg-red-100 text-red-800' },
+                        ]}
+                        emptyMessage="Aucune entreprise"
+                        renderCard={(c: any) => (
+                            <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+                                <Link href={`/super-admin/companies/${c.id}`} className="font-medium text-blue-600 hover:underline">{c.name}</Link>
+                                <div className="mt-1 text-xs text-gray-500">
+                                    {c.currency} · {c.users_count || 0} utilisateur(s) · {c.employees_count || 0} employé(s)
+                                </div>
+                                <div className="mt-1 text-xs text-gray-500">
+                                    {c.subscriptions?.[0]?.plan ? c.subscriptions[0].plan.name : 'Aucun abonnement'}
+                                </div>
+                                <div className="mt-3 flex gap-3 border-t border-gray-100 pt-2 text-xs">
+                                    <Link href={`/super-admin/companies/${c.id}/edit`} className="text-blue-600 hover:underline">Éditer</Link>
+                                    <button onClick={() => toggleActive(c)} className={c.is_active ? 'text-orange-600' : 'text-green-600'}>
+                                        {c.is_active ? 'Suspendre' : 'Réactiver'}
+                                    </button>
+                                    <button onClick={() => deleteCompany(c)} className="text-red-600 hover:underline">Supprimer</button>
+                                </div>
+                            </div>
+                        )}
+                    />
+                )}
             </div>
         </ErpLayout>
     );

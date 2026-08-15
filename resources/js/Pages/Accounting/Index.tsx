@@ -1,6 +1,8 @@
 import ErpLayout from '@/Layouts/ErpLayout';
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
+import ViewSwitcher, { ViewMode } from '@/Components/ViewSwitcher';
+import KanbanBoard from '@/Components/KanbanBoard';
 
 interface Account { id:number; number:string; name:string; class_number:number; type:string; is_active:boolean; }
 interface Journal { id:number; code:string; name:string; type:string; is_active:boolean; }
@@ -49,6 +51,8 @@ export default function Index({accounts=[],journals=[],fiscalYears=[],periods=[]
 }
 
 function EcrituresTab({data}:{data:Entry[]}){
+  const [view,setView]=useState<ViewMode>('list');
+
   const validateEntry=(e:Entry)=>{
     if(!confirm(`Valider l'écriture "${e.description}" ? Cette action est définitive.`))return;
     router.post(route('accounting.ecritures.validate',e.id));
@@ -61,9 +65,11 @@ function EcrituresTab({data}:{data:Entry[]}){
   };
 
   return (<div>
-    <div className="flex justify-end mb-4">
+    <div className="flex justify-between items-center mb-4">
+      <ViewSwitcher value={view} onChange={setView}/>
       <a href={route('accounting.ecritures.create')} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 px-4 rounded-md">+ Nouvelle écriture</a>
     </div>
+    {view==='list'?(
     <div className="overflow-x-auto"><table className="w-full text-sm">
       <thead className="bg-gray-50 border-b"><tr>
         <th className="p-2 text-left text-xs text-gray-600 uppercase">Date</th><th className="p-2 text-left text-xs text-gray-600 uppercase">Journal</th>
@@ -88,6 +94,36 @@ function EcrituresTab({data}:{data:Entry[]}){
             {e.status==='posted'&&<button onClick={()=>reverseEntry(e)} className="text-red-600 hover:underline text-xs">↩ Contre-passer</button>}
           </td>
         </tr>))}</tbody></table></div>
+    ):(
+    <KanbanBoard
+      data={data}
+      rowKey={(e)=>e.id}
+      groupBy={(e)=>e.status}
+      columns={[
+        {key:'draft',label:'Brouillon',colorClass:'bg-yellow-100 text-yellow-800'},
+        {key:'posted',label:'Validée',colorClass:'bg-green-100 text-green-800'},
+        {key:'cancelled',label:'Contre-passée',colorClass:'bg-gray-100 text-gray-600'},
+      ]}
+      emptyMessage="Aucune écriture. Créez-en une nouvelle."
+      renderCard={(e)=>(
+        <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-xs text-gray-500">{e.journal||'—'} · {new Date(e.entry_date).toLocaleDateString('fr-FR')}</span>
+            {e.reference&&<span className="font-mono text-xs text-gray-400">{e.reference}</span>}
+          </div>
+          <div className="mt-1 text-sm text-gray-900">{e.description}</div>
+          <div className="mt-2 flex justify-between text-xs font-mono text-gray-600">
+            <span>Débit {formatMoney(e.total_debit)}</span>
+            <span>Crédit {formatMoney(e.total_credit)}</span>
+          </div>
+          <div className="mt-3 flex gap-3 border-t border-gray-100 pt-2 text-xs">
+            {e.status==='draft'&&<button onClick={()=>validateEntry(e)} className="text-green-600 hover:underline">✓ Valider</button>}
+            {e.status==='posted'&&<button onClick={()=>reverseEntry(e)} className="text-red-600 hover:underline">↩ Contre-passer</button>}
+          </div>
+        </div>
+      )}
+    />
+    )}
   </div>);
 }
 

@@ -1,6 +1,8 @@
 import ErpLayout from '@/Layouts/ErpLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import ViewSwitcher, { ViewMode } from '@/Components/ViewSwitcher';
+import KanbanBoard from '@/Components/KanbanBoard';
 
 interface PayRun { id: number; name: string; reference: string; period_start: string; period_end: string; status: string; payslips_count: number; total_net: number; total_gross: number; total_employer: number; accounting_entry: { id: number; reference: string } | null; }
 interface Payslip { id: number; employee: { full_name: string; matricule: string }; pay_run: { name: string }; gross_salary: number; total_deductions: number; net_salary: number; }
@@ -99,36 +101,65 @@ export default function Index({ activeTab, payRuns = [], payslips = [], payItems
 }
 
 function PeriodsTab({ payRuns }: { payRuns: PayRun[] }) {
+    const [view, setView] = useState<ViewMode>('list');
+
     return (
-        <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b"><tr>
-                    <th className="p-3 text-left text-xs font-semibold text-gray-600 uppercase">Période</th>
-                    <th className="p-3 text-left text-xs font-semibold text-gray-600 uppercase">Dates</th>
-                    <th className="p-3 text-center text-xs font-semibold text-gray-600 uppercase">Bulletins</th>
-                    <th className="p-3 text-right text-xs font-semibold text-gray-600 uppercase">Brut</th>
-                    <th className="p-3 text-right text-xs font-semibold text-gray-600 uppercase">Net</th>
-                    <th className="p-3 text-center text-xs font-semibold text-gray-600 uppercase">Statut</th>
-                    <th className="p-3 text-right text-xs font-semibold text-gray-600 uppercase">Actions</th>
-                </tr></thead>
-                <tbody className="divide-y divide-gray-100">
-                    {payRuns.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-gray-500">Aucune période. Créez-en une avec « + Nouvelle période ».</td></tr> :
-                    payRuns.map((pr) => {
-                        const cfg = STATUS_CONFIG[pr.status] || STATUS_CONFIG.draft;
-                        return (
-                            <tr key={pr.id} className="hover:bg-gray-50">
-                                <td className="p-3"><div className="font-medium text-gray-900">{pr.name}</div><div className="text-xs text-gray-500 font-mono">{pr.reference}</div></td>
-                                <td className="p-3 text-xs text-gray-600">{new Date(pr.period_start).toLocaleDateString('fr-FR')} → {new Date(pr.period_end).toLocaleDateString('fr-FR')}</td>
-                                <td className="p-3 text-center"><span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-50 text-indigo-700 font-bold text-xs">{pr.payslips_count}</span></td>
-                                <td className="p-3 text-right font-mono text-xs">{formatMoney(pr.total_gross)}</td>
-                                <td className="p-3 text-right font-mono text-xs font-semibold text-green-700">{formatMoney(pr.total_net)}</td>
-                                <td className="p-3 text-center"><span className={'inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ' + cfg.color}>{cfg.icon} {cfg.label}</span></td>
-                                <td className="p-3 text-right"><Link href={route('payroll.show', pr.id)} className="inline-flex bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-3 py-1.5 rounded-md">Ouvrir →</Link></td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
+        <div>
+            <div className="mb-3 flex justify-end">
+                <ViewSwitcher value={view} onChange={setView} />
+            </div>
+            {view === 'list' ? (
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead className="bg-gray-50 border-b"><tr>
+                            <th className="p-3 text-left text-xs font-semibold text-gray-600 uppercase">Période</th>
+                            <th className="p-3 text-left text-xs font-semibold text-gray-600 uppercase">Dates</th>
+                            <th className="p-3 text-center text-xs font-semibold text-gray-600 uppercase">Bulletins</th>
+                            <th className="p-3 text-right text-xs font-semibold text-gray-600 uppercase">Brut</th>
+                            <th className="p-3 text-right text-xs font-semibold text-gray-600 uppercase">Net</th>
+                            <th className="p-3 text-center text-xs font-semibold text-gray-600 uppercase">Statut</th>
+                            <th className="p-3 text-right text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                        </tr></thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {payRuns.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-gray-500">Aucune période. Créez-en une avec « + Nouvelle période ».</td></tr> :
+                            payRuns.map((pr) => {
+                                const cfg = STATUS_CONFIG[pr.status] || STATUS_CONFIG.draft;
+                                return (
+                                    <tr key={pr.id} className="hover:bg-gray-50">
+                                        <td className="p-3"><div className="font-medium text-gray-900">{pr.name}</div><div className="text-xs text-gray-500 font-mono">{pr.reference}</div></td>
+                                        <td className="p-3 text-xs text-gray-600">{new Date(pr.period_start).toLocaleDateString('fr-FR')} → {new Date(pr.period_end).toLocaleDateString('fr-FR')}</td>
+                                        <td className="p-3 text-center"><span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-50 text-indigo-700 font-bold text-xs">{pr.payslips_count}</span></td>
+                                        <td className="p-3 text-right font-mono text-xs">{formatMoney(pr.total_gross)}</td>
+                                        <td className="p-3 text-right font-mono text-xs font-semibold text-green-700">{formatMoney(pr.total_net)}</td>
+                                        <td className="p-3 text-center"><span className={'inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ' + cfg.color}>{cfg.icon} {cfg.label}</span></td>
+                                        <td className="p-3 text-right"><Link href={route('payroll.show', pr.id)} className="inline-flex bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-3 py-1.5 rounded-md">Ouvrir →</Link></td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            ) : (
+                <KanbanBoard
+                    data={payRuns}
+                    rowKey={(pr) => pr.id}
+                    groupBy={(pr) => STATUS_CONFIG[pr.status] ? pr.status : 'draft'}
+                    columns={Object.entries(STATUS_CONFIG).map(([key, cfg]) => ({ key, label: `${cfg.icon} ${cfg.label}`, colorClass: cfg.color }))}
+                    emptyMessage="Aucune période. Créez-en une avec « + Nouvelle période »."
+                    renderCard={(pr) => (
+                        <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+                            <div className="font-medium text-gray-900">{pr.name}</div>
+                            <div className="text-xs text-gray-500 font-mono">{pr.reference}</div>
+                            <div className="mt-1 text-xs text-gray-600">{new Date(pr.period_start).toLocaleDateString('fr-FR')} → {new Date(pr.period_end).toLocaleDateString('fr-FR')}</div>
+                            <div className="mt-2 flex items-center justify-between text-xs">
+                                <span className="text-gray-500">{pr.payslips_count} bulletin(s)</span>
+                                <span className="font-mono font-semibold text-green-700">{formatMoney(pr.total_net)}</span>
+                            </div>
+                            <Link href={route('payroll.show', pr.id)} className="mt-3 inline-flex w-full items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-3 py-1.5 rounded-md">Ouvrir →</Link>
+                        </div>
+                    )}
+                />
+            )}
         </div>
     );
 }

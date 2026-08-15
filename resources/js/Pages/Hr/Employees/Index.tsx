@@ -1,6 +1,8 @@
 import ErpLayout from '@/Layouts/ErpLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import ViewSwitcher, { ViewMode } from '@/Components/ViewSwitcher';
+import KanbanBoard from '@/Components/KanbanBoard';
 
 interface Employee {
     id: number;
@@ -36,6 +38,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 
 export default function Index({ employees, departments, stats, filters }: Props) {
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [view, setView] = useState<ViewMode>('list');
     const [search, setSearch] = useState(filters.search || '');
     const [status, setStatus] = useState(filters.status || '');
     const [department, setDepartment] = useState(filters.department || '');
@@ -63,9 +66,12 @@ export default function Index({ employees, departments, stats, filters }: Props)
                             <h1 className="text-2xl font-bold text-gray-900">👥 Gestion des Employés</h1>
                             <p className="text-sm text-gray-500 mt-1">CRUD complet : Créer, Consulter, Modifier, Supprimer</p>
                         </div>
-                        <button onClick={() => setShowCreateModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-5 rounded-lg text-sm shadow-sm">
-                            + Nouvel employé
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <ViewSwitcher value={view} onChange={setView} />
+                            <button onClick={() => setShowCreateModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-5 rounded-lg text-sm shadow-sm">
+                                + Nouvel employé
+                            </button>
+                        </div>
                     </div>
 
 
@@ -113,56 +119,94 @@ export default function Index({ employees, departments, stats, filters }: Props)
                     </div>
 
                     {/* TABLE */}
-                    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead className="bg-gray-50 border-b"><tr>
-                                    <th className="p-3 text-left text-xs font-semibold text-gray-600 uppercase">Matricule</th>
-                                    <th className="p-3 text-left text-xs font-semibold text-gray-600 uppercase">Employé</th>
-                                    <th className="p-3 text-left text-xs font-semibold text-gray-600 uppercase">Contact</th>
-                                    <th className="p-3 text-left text-xs font-semibold text-gray-600 uppercase">Département</th>
-                                    <th className="p-3 text-left text-xs font-semibold text-gray-600 uppercase">Poste</th>
-                                    <th className="p-3 text-left text-xs font-semibold text-gray-600 uppercase">Embauche</th>
-                                    <th className="p-3 text-center text-xs font-semibold text-gray-600 uppercase">Statut</th>
-                                    <th className="p-3 text-right text-xs font-semibold text-gray-600 uppercase">Actions</th>
-                                </tr></thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {employees.length === 0 ? (
-                                        <tr><td colSpan={8} className="p-8 text-center text-gray-500">
-                                            Aucun employé. <button onClick={() => setShowCreateModal(true)} className="text-indigo-600 font-medium hover:underline">Créer le premier →</button>
-                                        </td></tr>
-                                    ) : employees.map((e) => {
-                                        const cfg = STATUS_CONFIG[e.status] || STATUS_CONFIG.inactive;
-                                        return (
-                                            <tr key={e.id} className="hover:bg-gray-50">
-                                                <td className="p-3 font-mono text-xs text-gray-700">{e.matricule}</td>
-                                                <td className="p-3">
-                                                    <div className="font-medium text-gray-900">{e.full_name}</div>
-                                                    <div className="text-xs text-gray-500">{e.sex === 'M' ? '♂ Homme' : e.sex === 'F' ? '♀ Femme' : '—'}</div>
-                                                </td>
-                                                <td className="p-3 text-xs text-gray-600">
-                                                    {e.email && <div>{e.email}</div>}
-                                                    {e.phone && <div>{e.phone}</div>}
-                                                    {!e.email && !e.phone && '—'}
-                                                </td>
-                                                <td className="p-3 text-xs">{e.department?.name || '—'}</td>
-                                                <td className="p-3 text-xs">{e.position?.name || '—'}</td>
-                                                <td className="p-3 text-xs">{new Date(e.hire_date).toLocaleDateString('fr-FR')}</td>
-                                                <td className="p-3 text-center">
-                                                    <span className={'px-2 py-1 rounded-full text-xs font-semibold ' + cfg.color}>{cfg.label}</span>
-                                                </td>
-                                                <td className="p-3 text-right">
-                                                    <Link href={route('hr.employees.show', e.id)} className="inline-flex items-center bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-3 py-1.5 rounded-md">
-                                                        Voir →
-                                                    </Link>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
+                    {view === 'list' ? (
+                        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-gray-50 border-b"><tr>
+                                        <th className="p-3 text-left text-xs font-semibold text-gray-600 uppercase">Matricule</th>
+                                        <th className="p-3 text-left text-xs font-semibold text-gray-600 uppercase">Employé</th>
+                                        <th className="p-3 text-left text-xs font-semibold text-gray-600 uppercase">Contact</th>
+                                        <th className="p-3 text-left text-xs font-semibold text-gray-600 uppercase">Département</th>
+                                        <th className="p-3 text-left text-xs font-semibold text-gray-600 uppercase">Poste</th>
+                                        <th className="p-3 text-left text-xs font-semibold text-gray-600 uppercase">Embauche</th>
+                                        <th className="p-3 text-center text-xs font-semibold text-gray-600 uppercase">Statut</th>
+                                        <th className="p-3 text-right text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                                    </tr></thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {employees.length === 0 ? (
+                                            <tr><td colSpan={8} className="p-8 text-center text-gray-500">
+                                                Aucun employé. <button onClick={() => setShowCreateModal(true)} className="text-indigo-600 font-medium hover:underline">Créer le premier →</button>
+                                            </td></tr>
+                                        ) : employees.map((e) => {
+                                            const cfg = STATUS_CONFIG[e.status] || STATUS_CONFIG.inactive;
+                                            return (
+                                                <tr key={e.id} className="hover:bg-gray-50">
+                                                    <td className="p-3 font-mono text-xs text-gray-700">{e.matricule}</td>
+                                                    <td className="p-3">
+                                                        <div className="font-medium text-gray-900">{e.full_name}</div>
+                                                        <div className="text-xs text-gray-500">{e.sex === 'M' ? '♂ Homme' : e.sex === 'F' ? '♀ Femme' : '—'}</div>
+                                                    </td>
+                                                    <td className="p-3 text-xs text-gray-600">
+                                                        {e.email && <div>{e.email}</div>}
+                                                        {e.phone && <div>{e.phone}</div>}
+                                                        {!e.email && !e.phone && '—'}
+                                                    </td>
+                                                    <td className="p-3 text-xs">{e.department?.name || '—'}</td>
+                                                    <td className="p-3 text-xs">{e.position?.name || '—'}</td>
+                                                    <td className="p-3 text-xs">{new Date(e.hire_date).toLocaleDateString('fr-FR')}</td>
+                                                    <td className="p-3 text-center">
+                                                        <span className={'px-2 py-1 rounded-full text-xs font-semibold ' + cfg.color}>{cfg.label}</span>
+                                                    </td>
+                                                    <td className="p-3 text-right">
+                                                        <Link href={route('hr.employees.show', e.id)} className="inline-flex items-center bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-3 py-1.5 rounded-md">
+                                                            Voir →
+                                                        </Link>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        <KanbanBoard
+                            data={employees}
+                            rowKey={(e) => e.id}
+                            groupBy={(e) => (STATUS_CONFIG[e.status] ? e.status : 'inactive')}
+                            columns={Object.entries(STATUS_CONFIG).map(([key, cfg]) => ({ key, label: cfg.label, colorClass: cfg.color }))}
+                            emptyMessage="Aucun employé"
+                            renderCard={(e) => {
+                                const cfg = STATUS_CONFIG[e.status] || STATUS_CONFIG.inactive;
+                                return (
+                                    <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div>
+                                                <div className="font-medium text-gray-900">{e.full_name}</div>
+                                                <div className="font-mono text-xs text-gray-500">{e.matricule}</div>
+                                            </div>
+                                            <span className={'px-2 py-1 rounded-full text-xs font-semibold ' + cfg.color}>{cfg.label}</span>
+                                        </div>
+                                        <div className="mt-2 text-xs text-gray-600">
+                                            {e.department?.name || '—'} {e.position?.name ? `· ${e.position.name}` : ''}
+                                        </div>
+                                        <div className="mt-1 text-xs text-gray-500">
+                                            {e.email || e.phone || '—'}
+                                        </div>
+                                        <div className="mt-1 text-xs text-gray-400">
+                                            Embauché le {new Date(e.hire_date).toLocaleDateString('fr-FR')}
+                                        </div>
+                                        <div className="mt-3 flex gap-3 border-t border-gray-100 pt-2 text-xs">
+                                            <Link href={route('hr.employees.show', e.id)} className="inline-flex items-center bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-3 py-1.5 rounded-md">
+                                                Voir →
+                                            </Link>
+                                        </div>
+                                    </div>
+                                );
+                            }}
+                        />
+                    )}
                 </div>
             </div>
 

@@ -2,6 +2,8 @@ import ErpLayout from '@/Layouts/ErpLayout';
 import { Head, router } from '@inertiajs/react';
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
 import { FilePlus2, Pencil, Plus, Trash2 } from 'lucide-react';
+import ViewSwitcher, { ViewMode } from '@/Components/ViewSwitcher';
+import KanbanBoard from '@/Components/KanbanBoard';
 
 interface TaxRow { id: number; code: string; name: string; type: string; is_active: boolean; rate: number | null; effective_from: string | null; rates_count: number; }
 interface DeclarationRow { id: number; tax_name: string; year: number | null; month: number | null; base_amount: number; tax_amount: number; status: string; }
@@ -84,9 +86,18 @@ export default function Index({ taxes, declarations, deadlines, initialTab }: Pr
 }
 
 /* ═══════════ ONGLET TAXES ═══════════ */
+const taxTypeColors: Record<string, string> = {
+    vat: 'bg-indigo-100 text-indigo-800',
+    withholding: 'bg-purple-100 text-purple-800',
+    income_tax: 'bg-blue-100 text-blue-800',
+    ts: 'bg-teal-100 text-teal-800',
+    other: 'bg-gray-100 text-gray-800',
+};
+
 function TaxesTab({ taxes }: { taxes: TaxRow[] }) {
     const [modal, setModal] = useState<null | { mode: 'create' } | { mode: 'edit'; tax: TaxRow }>(null);
     const [rateModal, setRateModal] = useState<TaxRow | null>(null);
+    const [view, setView] = useState<ViewMode>('list');
 
     const remove = (t: TaxRow) => {
         if (window.confirm(`Supprimer la taxe ${t.code} ?`)) router.delete(route('tax.taxes.destroy', t.id));
@@ -94,44 +105,79 @@ function TaxesTab({ taxes }: { taxes: TaxRow[] }) {
 
     return (
         <div>
-            <div className="flex justify-end mb-4">
+            <div className="flex items-center justify-between mb-4">
+                <ViewSwitcher value={view} onChange={setView} />
                 <button onClick={() => setModal({ mode: 'create' })} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 px-4 rounded-md flex items-center gap-1">
                     <Plus className="h-4 w-4" /> Ajouter une taxe
                 </button>
             </div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead className="bg-gray-50 dark:bg-gray-700 border-b">
-                        <tr>
-                            <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Code</th>
-                            <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Nom</th>
-                            <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Type</th>
-                            <th className="p-3 text-right text-xs text-gray-600 dark:text-gray-300 uppercase">Taux actuel</th>
-                            <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Date d'effet</th>
-                            <th className="p-3 text-center text-xs text-gray-600 dark:text-gray-300 uppercase">Historique</th>
-                            <th className="p-3 text-right text-xs text-gray-600 dark:text-gray-300 uppercase">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                        {taxes.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-gray-400">Aucune taxe</td></tr>}
-                        {taxes.map((t) => (
-                            <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                <td className="p-3 font-mono font-semibold">{t.code}</td>
-                                <td className="p-3">{t.name}</td>
-                                <td className="p-3"><span className="px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">{typeLabels[t.type] || t.type}</span></td>
-                                <td className="p-3 text-right font-mono font-bold">{t.rate !== null ? t.rate.toLocaleString('fr-FR') + ' %' : '—'}</td>
-                                <td className="p-3">{t.effective_from || '—'}</td>
-                                <td className="p-3 text-center"><span className="text-xs text-gray-500">{t.rates_count} taux</span></td>
-                                <td className="p-3 text-right whitespace-nowrap">
-                                    <button onClick={() => setRateModal(t)} className="text-green-600 hover:text-green-800 text-xs font-medium mr-3" title="Nouveau taux">+ Taux</button>
-                                    <button onClick={() => setModal({ mode: 'edit', tax: t })} className="text-indigo-600 hover:text-indigo-800 mr-3" title="Modifier"><Pencil className="h-4 w-4 inline" /></button>
-                                    <button onClick={() => remove(t)} className="text-red-600 hover:text-red-800" title="Supprimer"><Trash2 className="h-4 w-4 inline" /></button>
-                                </td>
+            {view === 'list' ? (
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead className="bg-gray-50 dark:bg-gray-700 border-b">
+                            <tr>
+                                <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Code</th>
+                                <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Nom</th>
+                                <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Type</th>
+                                <th className="p-3 text-right text-xs text-gray-600 dark:text-gray-300 uppercase">Taux actuel</th>
+                                <th className="p-3 text-left text-xs text-gray-600 dark:text-gray-300 uppercase">Date d'effet</th>
+                                <th className="p-3 text-center text-xs text-gray-600 dark:text-gray-300 uppercase">Historique</th>
+                                <th className="p-3 text-right text-xs text-gray-600 dark:text-gray-300 uppercase">Actions</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                            {taxes.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-gray-400">Aucune taxe</td></tr>}
+                            {taxes.map((t) => (
+                                <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                    <td className="p-3 font-mono font-semibold">{t.code}</td>
+                                    <td className="p-3">{t.name}</td>
+                                    <td className="p-3"><span className="px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">{typeLabels[t.type] || t.type}</span></td>
+                                    <td className="p-3 text-right font-mono font-bold">{t.rate !== null ? t.rate.toLocaleString('fr-FR') + ' %' : '—'}</td>
+                                    <td className="p-3">{t.effective_from || '—'}</td>
+                                    <td className="p-3 text-center"><span className="text-xs text-gray-500">{t.rates_count} taux</span></td>
+                                    <td className="p-3 text-right whitespace-nowrap">
+                                        <button onClick={() => setRateModal(t)} className="text-green-600 hover:text-green-800 text-xs font-medium mr-3" title="Nouveau taux">+ Taux</button>
+                                        <button onClick={() => setModal({ mode: 'edit', tax: t })} className="text-indigo-600 hover:text-indigo-800 mr-3" title="Modifier"><Pencil className="h-4 w-4 inline" /></button>
+                                        <button onClick={() => remove(t)} className="text-red-600 hover:text-red-800" title="Supprimer"><Trash2 className="h-4 w-4 inline" /></button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            ) : (
+                <KanbanBoard
+                    data={taxes}
+                    rowKey={(t) => t.id}
+                    groupBy={(t) => t.type}
+                    columns={[
+                        { key: 'vat', label: 'TVA', colorClass: taxTypeColors.vat },
+                        { key: 'withholding', label: 'Retenue à la source', colorClass: taxTypeColors.withholding },
+                        { key: 'income_tax', label: 'Impôt sur le revenu', colorClass: taxTypeColors.income_tax },
+                        { key: 'ts', label: 'Taxe sur salaires', colorClass: taxTypeColors.ts },
+                        { key: 'other', label: 'Autre', colorClass: taxTypeColors.other },
+                    ]}
+                    emptyMessage="Aucune taxe"
+                    renderCard={(t) => (
+                        <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <span className="font-mono font-semibold text-sm">{t.code}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-xs ${taxTypeColors[t.type] || taxTypeColors.other}`}>{typeLabels[t.type] || t.type}</span>
+                            </div>
+                            <div className="mt-1 text-sm text-gray-900 dark:text-gray-100">{t.name}</div>
+                            <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                Taux actuel : <span className="font-mono font-bold">{t.rate !== null ? t.rate.toLocaleString('fr-FR') + ' %' : '—'}</span>
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">Date d'effet : {t.effective_from || '—'} · {t.rates_count} taux</div>
+                            <div className="mt-3 flex gap-3 border-t border-gray-100 dark:border-gray-700 pt-2 text-xs">
+                                <button onClick={() => setRateModal(t)} className="text-green-600 hover:text-green-800 font-medium">+ Taux</button>
+                                <button onClick={() => setModal({ mode: 'edit', tax: t })} className="text-indigo-600 hover:text-indigo-800 font-medium">Modifier</button>
+                                <button onClick={() => remove(t)} className="text-red-600 hover:text-red-800 font-medium">Supprimer</button>
+                            </div>
+                        </div>
+                    )}
+                />
+            )}
             <p className="text-xs text-gray-500 mt-3">Les taux sont versionnés avec dates d'effet (conformité moteur de règles) : un changement de taux ne modifie jamais les anciens calculs.</p>
 
             {modal && <TaxModal mode={modal.mode} tax={modal.mode === 'edit' ? modal.tax : undefined} onClose={() => setModal(null)} />}
