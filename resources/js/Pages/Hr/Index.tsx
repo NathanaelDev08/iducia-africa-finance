@@ -222,7 +222,7 @@ function DocumentsTab({documents = [],allEmployees}:{documents?:Doc[];allEmploye
         <tr key={d.id} className="hover:bg-gray-50">
           <td className="p-3 font-medium">{d.employee.full_name}</td><td className="p-3 text-xs">{d.document_type}</td>
           <td className="p-3">{d.name}</td><td className="p-3 text-xs">{d.expires_at?new Date(d.expires_at).toLocaleDateString('fr-FR'):'—'}</td>
-          <td className="p-3 text-center">{d.file_path?<a href={'/storage/'+d.file_path} target="_blank" className="text-indigo-600 hover:underline text-xs">⬇ Télécharger</a>:<span className="text-xs text-gray-400">—</span>}</td>
+          <td className="p-3 text-center">{d.file_path?<a href={'/storage/'+d.file_path} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline text-xs">⬇ Télécharger</a>:<span className="text-xs text-gray-400">—</span>}</td>
           <td className="p-3 text-right"><button onClick={()=>setDel(d)} className="text-red-600 hover:underline text-xs">🗑</button></td>
         </tr>))}</tbody></table></div>
     {modal&&<DocumentModal allEmployees={allEmployees} onClose={()=>setModal(false)}/>}

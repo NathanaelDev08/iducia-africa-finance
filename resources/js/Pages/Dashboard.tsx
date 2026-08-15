@@ -142,7 +142,7 @@ export default function Dashboard({
                                                 <td className="p-2 text-right font-mono">{fmt(inv.total)}</td>
                                                 <td className="p-2 text-center">{statusBadge(inv.status)}</td>
                                                 <td className="p-2 text-center whitespace-nowrap">
-                                                    <a href={route('documents.invoice.view', inv.id)} target="_blank" className="text-blue-600 hover:text-blue-800 text-xs font-medium mr-2" title="Aperçu">👁</a>
+                                                    <a href={route('documents.invoice.view', inv.id)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-xs font-medium mr-2" title="Aperçu">👁</a>
                                                     <a href={route('documents.invoice.pdf', inv.id)} className="text-red-600 hover:text-red-800 text-xs font-medium" title="PDF">📄</a>
                                                 </td>
                                             </tr>
@@ -173,7 +173,7 @@ export default function Dashboard({
                                                 <td className="p-2">{r.client}</td>
                                                 <td className="p-2 text-right font-mono text-green-700">{fmt(r.amount)}</td>
                                                 <td className="p-2 text-center whitespace-nowrap">
-                                                    <a href={route('documents.receipt.view', r.id)} target="_blank" className="text-blue-600 hover:text-blue-800 text-xs font-medium mr-2" title="Aperçu">👁</a>
+                                                    <a href={route('documents.receipt.view', r.id)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-xs font-medium mr-2" title="Aperçu">👁</a>
                                                     <a href={route('documents.receipt.pdf', r.id)} className="text-red-600 hover:text-red-800 text-xs font-medium" title="PDF">📄</a>
                                                 </td>
                                             </tr>
@@ -209,7 +209,7 @@ export default function Dashboard({
                                             <td className="p-2 text-right font-mono">{fmt(p.total)}</td>
                                             <td className="p-2 text-center">{statusBadge(p.status)}</td>
                                             <td className="p-2 text-center whitespace-nowrap">
-                                                <a href={route('documents.purchase.view', p.id)} target="_blank" className="text-blue-600 hover:text-blue-800 text-xs font-medium mr-2" title="Aperçu">👁</a>
+                                                <a href={route('documents.purchase.view', p.id)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-xs font-medium mr-2" title="Aperçu">👁</a>
                                                 <a href={route('documents.purchase.pdf', p.id)} className="text-red-600 hover:text-red-800 text-xs font-medium" title="PDF">📄</a>
                                             </td>
                                         </tr>

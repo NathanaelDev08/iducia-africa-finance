@@ -21,7 +21,7 @@ export default function GrandLivre({ activeTab }: PageProps<{ activeTab: string 
                 <Tabs tabs={tabs} />
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
                     <p className="text-gray-500 dark:text-gray-400">Le grand livre affiche le détail de toutes les écritures par compte. Utilisez le lien ci-dessous pour consulter le grand livre complet via l'API.</p>
-                    <a href={route('reporting.general-ledger')} target="_blank" className="mt-4 inline-block px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                    <a href={route('reporting.general-ledger')} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
                         Consulter le Grand Livre (JSON)
                     </a>
                 </div>

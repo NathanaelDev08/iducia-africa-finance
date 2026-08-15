@@ -159,7 +159,7 @@ function PayslipsTab({ payslips }: { payslips: Payslip[] }) {
                                 <td className="p-3 text-right font-mono">{formatMoney(ps.gross_salary)}</td>
                                 <td className="p-3 text-right font-mono font-bold text-green-700">{formatMoney(ps.net_salary)}</td>
                                 <td className="p-3 text-center"><div className="flex items-center justify-center gap-1.5">
-<a href={route('payroll.payslip.view', ps.id)} target="_blank" title="Aperçu du bulletin" className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-2 py-1.5 rounded-md">👁 Voir</a>
+<a href={route('payroll.payslip.view', ps.id)} target="_blank" rel="noopener noreferrer" title="Aperçu du bulletin" className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-2 py-1.5 rounded-md">👁 Voir</a>
 <a href={route('payroll.payslip.pdf', ps.id)} title="Télécharger le PDF" className="inline-flex items-center bg-red-600 hover:bg-red-700 text-white text-xs font-medium px-2 py-1.5 rounded-md">📄 PDF</a>
 <button type="button" onClick={() => { if (window.confirm('Supprimer ce bulletin ?')) router.delete(route('payroll.payslip.destroy', ps.id)); }} title="Supprimer" className="inline-flex items-center bg-white border border-red-300 text-red-600 hover:bg-red-50 text-xs font-medium px-2 py-1.5 rounded-md">🗑</button>
 </div></td>

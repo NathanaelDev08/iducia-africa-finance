@@ -48,20 +48,17 @@ export default function UpdateProfileInformationForm({ mustVerifyEmail, status, 
         // Upload
         const fd = new FormData();
         fd.append('avatar', file);
+        fd.append('_method', 'PATCH');
         setUploading(true);
         setUploadMsg(null);
 
-        fetch(route('profile.avatar'), {
-            method: 'POST',
+        window.axios.post(route('profile.avatar'), fd, {
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 'Accept': 'application/json',
                 'X-Inertia': 'true',
             },
-            body: fd,
         })
-            .then((r) => {
-                if (!r.ok) throw new Error('Upload échoué');
+            .then(() => {
                 setUploadMsg({ type: 'success', text: 'Photo de profil mise à jour !' });
                 setTimeout(() => window.location.reload(), 1000);
             })

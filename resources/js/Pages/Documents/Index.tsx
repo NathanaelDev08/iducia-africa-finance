@@ -67,7 +67,7 @@ export default function Index({ documents, company }: Props) {
             key: 'id', label: 'Documents', align: 'center', sortable: false,
             render: (d) => (
                 <span className="whitespace-nowrap">
-                    <a href={route(d.view, d.id)} target="_blank" className="text-blue-600 hover:text-blue-800 text-sm mr-2" title="Aperçu dans le navigateur">👁</a>
+                    <a href={route(d.view, d.id)} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-sm mr-2" title="Aperçu dans le navigateur">👁</a>
                     <a href={route(d.pdf, d.id)} className="text-red-600 hover:text-red-800 text-sm" title="Télécharger le PDF">📄</a>
                 </span>
             ),
