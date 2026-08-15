@@ -16,7 +16,6 @@ class StoreAccountingEntryRequest extends FormRequest
     {
         return [
             'journal_id' => ['required', 'exists:journals,id'],
-            'period_id' => ['required', 'exists:periods,id'],
             'entry_date' => ['required', 'date'],
             'reference' => ['nullable', 'string', 'max:100'],
             'description' => ['required', 'string', 'max:500'],

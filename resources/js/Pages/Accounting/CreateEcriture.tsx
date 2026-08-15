@@ -12,7 +12,6 @@ import SecondaryButton from '@/Components/SecondaryButton';
 import { FileText, BookOpen, Notebook, Scale, List, Plus, Trash2 } from 'lucide-react';
 
 interface Journal { id: number; code: string; name: string; }
-interface Period { id: number; name: string; start_date: string; end_date: string; }
 interface Account { id: number; number: string; name: string; }
 
 interface EntryLine {
@@ -24,12 +23,11 @@ interface EntryLine {
 
 interface Props extends PageProps {
     journals: Journal[];
-    periods: Period[];
     accounts: Account[];
     activeTab: string;
 }
 
-export default function CreateEcriture({ journals, periods, accounts, activeTab, errors }: Props) {
+export default function CreateEcriture({ journals, accounts, activeTab, errors }: Props) {
     const tabs = [
         { label: 'Écritures', href: route('accounting.index'), active: activeTab === 'ecritures', icon: FileText },
         { label: 'Plan Comptable', href: route('accounting.plan'), active: activeTab === 'plan', icon: List },
@@ -45,7 +43,6 @@ export default function CreateEcriture({ journals, periods, accounts, activeTab,
 
     const { data, setData, post, processing, reset } = useForm({
         journal_id: '',
-        period_id: '',
         entry_date: new Date().toISOString().split('T')[0],
         reference: '',
         description: '',
@@ -86,7 +83,7 @@ export default function CreateEcriture({ journals, periods, accounts, activeTab,
 
                 <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
                     {/* Informations générales */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
                             <InputLabel required>Journal</InputLabel>
                             <SelectInput
@@ -97,17 +94,6 @@ export default function CreateEcriture({ journals, periods, accounts, activeTab,
                                 placeholder="Sélectionner un journal"
                             />
                             <InputError message={errors.journal_id} className="mt-1" />
-                        </div>
-                        <div>
-                            <InputLabel required>Période</InputLabel>
-                            <SelectInput
-                                className="w-full"
-                                value={data.period_id}
-                                onChange={(e) => setData('period_id', e.target.value)}
-                                options={periods.map(p => ({ value: p.id, label: p.name }))}
-                                placeholder="Sélectionner une période"
-                            />
-                            <InputError message={errors.period_id} className="mt-1" />
                         </div>
                         <div>
                             <InputLabel required>Date de l'écriture</InputLabel>

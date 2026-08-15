@@ -35,6 +35,11 @@ class Journal extends Model
         return $this->belongsTo(Account::class, 'default_account_id');
     }
 
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
     public function generateNextNumber(): string
     {
         $year = now()->format('Y');

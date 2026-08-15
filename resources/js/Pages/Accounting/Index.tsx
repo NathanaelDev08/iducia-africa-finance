@@ -6,14 +6,17 @@ interface Account { id:number; number:string; name:string; class_number:number; 
 interface Journal { id:number; code:string; name:string; type:string; is_active:boolean; }
 interface FiscalYear { id:number; name:string; start_date:string; end_date:string; status:string; }
 interface Period { id:number; name:string; start_date:string; end_date:string; status:string; fiscal_year_name:string; }
-interface Props { accounts:Account[]; journals:Journal[]; fiscalYears:FiscalYear[]; periods:Period[]; chartAccount:any; initialTab:string; }
+interface Entry { id:number; entry_date:string; reference:string|null; description:string; journal:string|null; period:string|null; status:string; total_debit:number; total_credit:number; }
+interface Props { accounts:Account[]; journals:Journal[]; fiscalYears:FiscalYear[]; periods:Period[]; entries:Entry[]; chartAccount:any; initialTab:string; }
 
-type TabKey='accounts'|'journals'|'fiscalYears'|'periods';
+type TabKey='ecritures'|'accounts'|'journals'|'fiscalYears'|'periods';
+const formatMoney=(v:number)=>(v||0).toLocaleString('fr-FR')+' FCFA';
 
-export default function Index({accounts,journals,fiscalYears,periods,initialTab}:Props){
-  const [tab,setTab]=useState<TabKey>((initialTab as TabKey)||'accounts');
+export default function Index({accounts=[],journals=[],fiscalYears=[],periods=[],entries=[],initialTab}:Props){
+  const [tab,setTab]=useState<TabKey>((initialTab as TabKey)||'ecritures');
   const flash=(usePage().props as any).flash;
   const tabs=[
+    {key:'ecritures' as TabKey,label:'Écritures',icon:'📝'},
     {key:'accounts' as TabKey,label:'Comptes',icon:'🔢'},
     {key:'journals' as TabKey,label:'Journaux',icon:'📔'},
     {key:'fiscalYears' as TabKey,label:'Exercices',icon:'📅'},
@@ -24,7 +27,7 @@ export default function Index({accounts,journals,fiscalYears,periods,initialTab}
       <Head title="Comptabilité"/>
       <div className="py-6"><div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-6"><h1 className="text-2xl font-bold text-gray-900">📒 Comptabilité</h1>
-        <p className="text-sm text-gray-500 mt-1">CRUD : Comptes, Journaux, Exercices, Périodes</p></div>
+        <p className="text-sm text-gray-500 mt-1">Écritures, comptes, journaux, exercices et périodes</p></div>
         {flash?.success&&<div className="mb-4 p-3 rounded bg-green-50 border border-green-200 text-green-800 text-sm">✓ {flash.success}</div>}
         {flash?.error&&<div className="mb-4 p-3 rounded bg-red-50 border border-red-200 text-red-800 text-sm">✗ {flash.error}</div>}
 
@@ -37,6 +40,7 @@ export default function Index({accounts,journals,fiscalYears,periods,initialTab}
         </nav></div>
 
         <div className="bg-white rounded-b-lg shadow-sm p-6">
+          {tab==='ecritures'&&<EcrituresTab data={entries}/>}
           {tab==='accounts'&&<AccountsTab data={accounts}/>}
           {tab==='journals'&&<JournalsTab data={journals}/>}
           {tab==='fiscalYears'&&<FiscalYearsTab data={fiscalYears}/>}
@@ -45,6 +49,49 @@ export default function Index({accounts,journals,fiscalYears,periods,initialTab}
       </div></div>
     </ErpLayout>
   );
+}
+
+function EcrituresTab({data}:{data:Entry[]}){
+  const validateEntry=(e:Entry)=>{
+    if(!confirm(`Valider l'écriture "${e.description}" ? Cette action est définitive.`))return;
+    router.post(route('accounting.ecritures.validate',e.id));
+  };
+
+  const reverseEntry=(e:Entry)=>{
+    const reason=prompt(`Motif de la contre-passation de "${e.description}" :`);
+    if(!reason)return;
+    router.post(route('accounting.ecritures.reverse',e.id),{reason});
+  };
+
+  return (<div>
+    <div className="flex justify-end mb-4">
+      <a href={route('accounting.ecritures.create')} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 px-4 rounded-md">+ Nouvelle écriture</a>
+    </div>
+    <div className="overflow-x-auto"><table className="w-full text-sm">
+      <thead className="bg-gray-50 border-b"><tr>
+        <th className="p-2 text-left text-xs text-gray-600 uppercase">Date</th><th className="p-2 text-left text-xs text-gray-600 uppercase">Journal</th>
+        <th className="p-2 text-left text-xs text-gray-600 uppercase">Référence</th><th className="p-2 text-left text-xs text-gray-600 uppercase">Libellé</th>
+        <th className="p-2 text-right text-xs text-gray-600 uppercase">Débit</th><th className="p-2 text-right text-xs text-gray-600 uppercase">Crédit</th>
+        <th className="p-2 text-center text-xs text-gray-600 uppercase">Statut</th><th className="p-2 text-right text-xs text-gray-600 uppercase">Actions</th></tr></thead>
+      <tbody className="divide-y">{data.length===0?<tr><td colSpan={8} className="p-8 text-center text-gray-500">Aucune écriture. Créez-en une nouvelle.</td></tr>:data.map(e=>(
+        <tr key={e.id} className="hover:bg-gray-50">
+          <td className="p-2 text-xs">{new Date(e.entry_date).toLocaleDateString('fr-FR')}</td>
+          <td className="p-2 font-mono text-xs">{e.journal||'—'}</td>
+          <td className="p-2 font-mono text-xs">{e.reference||'—'}</td>
+          <td className="p-2">{e.description}</td>
+          <td className="p-2 text-right font-mono">{formatMoney(e.total_debit)}</td>
+          <td className="p-2 text-right font-mono">{formatMoney(e.total_credit)}</td>
+          <td className="p-2 text-center">
+            {e.status==='draft'&&<span className="px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Brouillon</span>}
+            {e.status==='posted'&&<span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">Validée</span>}
+            {e.status==='cancelled'&&<span className="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">Contre-passée</span>}
+          </td>
+          <td className="p-2 text-right whitespace-nowrap">
+            {e.status==='draft'&&<button onClick={()=>validateEntry(e)} className="text-green-600 hover:underline text-xs mr-3">✓ Valider</button>}
+            {e.status==='posted'&&<button onClick={()=>reverseEntry(e)} className="text-red-600 hover:underline text-xs">↩ Contre-passer</button>}
+          </td>
+        </tr>))}</tbody></table></div>
+  </div>);
 }
 
 function AccountsTab({data}:{data:Account[]}){
