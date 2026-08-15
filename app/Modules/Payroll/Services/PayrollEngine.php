@@ -116,8 +116,39 @@ class PayrollEngine
             }
 
             if ($rateObj->employer_rate > 0) {
-                $totalEmployerContributions += ($cappedBase * ($rateObj->employer_rate / 100));
+                $employerAmount = $cappedBase * ($rateObj->employer_rate / 100);
+                $totalEmployerContributions += $employerAmount;
+
+                $employerItem = PayItem::firstOrCreate(
+                    ['code' => 'CNPS_PAT_' . $contrib->code, 'company_id' => $employee->company_id],
+                    ['name' => $contrib->name . ' (Part Patronale)', 'type' => 'employer_contribution', 'display_order' => 101, 'is_active' => true]
+                );
+                PayslipItem::create([
+                    'payslip_id' => $payslip->id, 'pay_item_id' => $employerItem->id, 'name' => $employerItem->name,
+                    'type' => 'employer_contribution', 'base_amount' => $cappedBase, 'rate' => $rateObj->employer_rate,
+                    'amount' => $employerAmount, 'is_earning' => false, 'display_order' => 101,
+                ]);
             }
+        }
+
+        // 3. Impôt sur salaire (ITS)
+        // Net imposable = brut - cotisations salariales. Barème simplifié de démonstration :
+        // le vrai barème progressif ivoirien doit être paramétré et validé par un fiscaliste
+        // avant toute mise en production réelle.
+        $taxableIncome = max(0, $totalEarnings - $totalDeductions);
+        $incomeTax = $this->calculateIncomeTax($taxableIncome);
+
+        if ($incomeTax > 0) {
+            $taxItem = PayItem::firstOrCreate(
+                ['code' => 'ITS', 'company_id' => $employee->company_id],
+                ['name' => 'Impôt sur les traitements et salaires (ITS)', 'type' => 'tax', 'display_order' => 95, 'is_active' => true]
+            );
+            PayslipItem::create([
+                'payslip_id' => $payslip->id, 'pay_item_id' => $taxItem->id, 'name' => $taxItem->name,
+                'type' => 'tax', 'base_amount' => $taxableIncome, 'rate' => null,
+                'amount' => $incomeTax, 'is_earning' => false, 'display_order' => 95,
+            ]);
+            $totalDeductions += $incomeTax;
         }
 
         // Totaux finaux
@@ -128,8 +159,24 @@ class PayrollEngine
             'gross_salary' => $grossSalary, 'total_earnings' => $totalEarnings,
             'total_deductions' => $totalDeductions, 'net_salary' => $netSalary,
             'employer_contributions' => $totalEmployerContributions,
+            'taxable_income' => $taxableIncome, 'income_tax' => $incomeTax,
         ]);
 
         return $payslip;
+    }
+
+    /**
+     * Barème simplifié de démonstration — à remplacer par le vrai barème
+     * progressif de l'ITS ivoirien, validé par un fiscaliste, avant usage réel.
+     */
+    protected function calculateIncomeTax(float $taxableIncome): float
+    {
+        $allowance = 150000;
+
+        if ($taxableIncome <= $allowance) {
+            return 0;
+        }
+
+        return round(($taxableIncome - $allowance) * 0.05, 2);
     }
 }

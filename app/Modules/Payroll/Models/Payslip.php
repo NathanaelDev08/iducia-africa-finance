@@ -12,12 +12,14 @@ class Payslip extends Model
         'company_id', 'pay_run_id', 'employee_id', 'status',
         'period_start', 'period_end', 'base_salary', 'gross_salary',
         'total_earnings', 'total_deductions', 'net_salary', 'employer_contributions',
+        'taxable_income', 'income_tax',
     ];
     protected $casts = [
         'period_start' => 'date', 'period_end' => 'date',
         'base_salary' => 'decimal:2', 'gross_salary' => 'decimal:2',
         'total_earnings' => 'decimal:2', 'total_deductions' => 'decimal:2',
         'net_salary' => 'decimal:2', 'employer_contributions' => 'decimal:2',
+        'taxable_income' => 'decimal:2', 'income_tax' => 'decimal:2',
     ];
     public function company(): BelongsTo { return $this->belongsTo(Company::class); }
     public function payRun(): BelongsTo { return $this->belongsTo(PayRun::class); }

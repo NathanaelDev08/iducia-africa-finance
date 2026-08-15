@@ -262,8 +262,10 @@ class PayrollController extends Controller
 
     public function payslipPdf(Payslip $payslip)
     {
-        $payslip->load(['company', 'employee.department', 'employee.position', 'payRun', 'items']);
-        $pdf = Pdf::loadView('payroll.payslip-pdf', ['payslip' => $payslip]);
+        $company = request()->attributes->get('company') ?? \App\Models\Company::first();
+        if ($payslip->company_id !== $company->id) abort(403);
+
+        $pdf = Pdf::loadView('payroll.payslip-pdf', $this->payslipViewData($payslip));
         $pdf->setPaper('a4', 'portrait');
 
         $filename = 'bulletin_' . ($payslip->employee->matricule ?? $payslip->id) . '_' . now()->format('YmdHis') . '.pdf';
@@ -277,9 +279,7 @@ class PayrollController extends Controller
         $company = request()->attributes->get('company') ?? \App\Models\Company::first();
         if ($payslip->company_id !== $company->id) abort(403);
 
-        $payslip->load(['company', 'employee.department', 'employee.position', 'payRun', 'items']);
-
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('payroll.payslip-pdf', ['payslip' => $payslip]);
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('payroll.payslip-pdf', $this->payslipViewData($payslip));
         $pdf->setPaper('a4', 'portrait');
 
         $filename = 'bulletin_' . ($payslip->slip_number ?? $payslip->id) . '_' . now()->format('YmdHis') . '.pdf';
@@ -290,6 +290,107 @@ class PayrollController extends Controller
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
             ->header('Pragma', 'no-cache')
             ->header('Expires', '0');
+    }
+
+    /**
+     * Rassemble toutes les données (réelles, calculées à partir de la base) nécessaires
+     * au template resources/views/payroll/payslip-pdf.blade.php.
+     */
+    private function payslipViewData(Payslip $payslip): array
+    {
+        $payslip->load([
+            'company',
+            'employee.department',
+            'employee.position',
+            'employee.contracts.contractType',
+            'payRun',
+            'items.payItem',
+        ]);
+
+        $employee = $payslip->employee;
+        $payRun = $payslip->payRun;
+        $periodEnd = $payRun?->period_end ?? now();
+
+        $contract = $employee->contracts
+            ->sortByDesc('start_date')
+            ->first(fn ($c) => $c->status === 'active' && $c->start_date <= $periodEnd)
+            ?? $employee->contracts->sortByDesc('start_date')->first();
+
+        // Ancienneté (années + mois complets) depuis la date d'embauche.
+        $seniority = null;
+        if ($employee->hire_date) {
+            $diff = $employee->hire_date->diff($periodEnd);
+            $seniority = ['years' => $diff->y, 'months' => $diff->m];
+        }
+
+        // Horaire mensuel dérivé des heures hebdomadaires du contrat (base légale : 52/12).
+        $weeklyHours = (float) ($contract->working_hours_per_week ?? 40);
+        $monthlyHours = round($weeklyHours * 52 / 12, 3);
+
+        // Heures supplémentaires du mois : quantité des variables de paie liées à un
+        // rubrique "heures sup." (ex. code HS_25) pour cette période.
+        $overtimeHours = (float) \App\Modules\Payroll\Models\PayrollVariable::where('employee_id', $employee->id)
+            ->where('pay_run_id', $payRun?->id)
+            ->whereHas('payItem', fn ($q) => $q->where('code', 'like', 'HS%'))
+            ->sum('quantity');
+
+        // Congés payés : taux d'acquisition mensuel standard (CCN CI du 20/07/1977 : 2,5 j/mois).
+        // Le solde se reconstitue chaque année civile (pas depuis l'embauche, sinon il grossirait
+        // indéfiniment) : acquis = 2,5 j x mois travaillés depuis le 1er janvier (ou l'embauche si
+        // plus récente), pris (année) = jours de congé annuel approuvés sur cette même année civile.
+        $leaveAccrualRate = 2.5;
+        $year = \Carbon\Carbon::parse($periodEnd)->year;
+        $yearStart = \Carbon\Carbon::createFromDate($year, 1, 1);
+        $accrualStart = ($employee->hire_date && $employee->hire_date->gt($yearStart)) ? $employee->hire_date : $yearStart;
+        $monthsOfService = max(0, min(12, (int) floor($accrualStart->diffInMonths($periodEnd)) + 1));
+        $leaveAccrued = round($monthsOfService * $leaveAccrualRate, 3);
+        $leaveTakenThisYear = (float) \App\Modules\Hr\Models\Leave::where('employee_id', $employee->id)
+            ->where('leave_type', 'annual')
+            ->where('status', 'approved')
+            ->whereYear('start_date', $year)
+            ->sum('days_count');
+        $leaveRemaining = max(0, round($leaveAccrued - $leaveTakenThisYear, 3));
+
+        // Cumuls "Période" (ce bulletin) et "Année" (tous les bulletins de l'employé
+        // sur l'année civile de la paie, jusqu'à ce bulletin inclus).
+        $cumulPeriode = [
+            'brut' => (float) $payslip->gross_salary,
+            'net_imposable' => (float) ($payslip->taxable_income ?? 0),
+            'charges_sal' => (float) $payslip->total_deductions,
+            'charges_pat' => (float) $payslip->employer_contributions,
+            'heures' => $monthlyHours,
+            'hs' => $overtimeHours,
+        ];
+
+        $payslipsYear = Payslip::where('employee_id', $employee->id)
+            ->whereHas('payRun', fn ($q) => $q->whereYear('period_end', $year))
+            ->where('period_end', '<=', $periodEnd)
+            ->get();
+
+        $cumulAnnee = [
+            'brut' => (float) $payslipsYear->sum('gross_salary'),
+            'net_imposable' => (float) $payslipsYear->sum('taxable_income'),
+            'charges_sal' => (float) $payslipsYear->sum('total_deductions'),
+            'charges_pat' => (float) $payslipsYear->sum('employer_contributions'),
+            'heures' => round($monthlyHours * max(1, $payslipsYear->count()), 3),
+            'hs' => 0.0, // pas de suivi historique des heures sup. au-delà du mois courant
+        ];
+
+        return [
+            'payslip' => $payslip,
+            'employee' => $employee,
+            'company' => $payslip->company,
+            'payRun' => $payRun,
+            'contract' => $contract,
+            'seniority' => $seniority,
+            'monthlyHours' => $monthlyHours,
+            'overtimeHours' => $overtimeHours,
+            'leaveAccrualRate' => $leaveAccrualRate,
+            'leaveRemaining' => $leaveRemaining,
+            'leaveTakenThisYear' => $leaveTakenThisYear,
+            'cumulPeriode' => $cumulPeriode,
+            'cumulAnnee' => $cumulAnnee,
+        ];
     }
     /** Suppression d'un bulletin */
     public function payslipDestroy(\App\Modules\Payroll\Models\Payslip $payslip)
