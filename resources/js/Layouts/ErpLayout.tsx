@@ -55,13 +55,15 @@ export default function ErpLayout({ children }: PropsWithChildren) {
                 <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
                     {menuItems.map((item) => {
                         const itemPath = new URL(item.href, window.location.origin).pathname;
-                        const isActive = itemPath === window.location.pathname;
+                        const isActive = itemPath === '/dashboard'
+                            ? window.location.pathname === itemPath
+                            : window.location.pathname === itemPath || window.location.pathname.startsWith(itemPath + '/');
                         const Icon = item.icon;
                         return (
-                            <Link key={item.name} href={item.href}
+                            <Link key={item.name} href={item.href} aria-current={isActive ? 'page' : undefined}
                                 className={`flex items-center px-5 py-3 text-base font-medium rounded-lg transition ${
                                     isActive
-                                    ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 border-l-4 border-indigo-600'
+                                    ? 'bg-brand-navy-light text-brand-navy dark:bg-brand-navy/40 dark:text-brand-gold-light border-l-4 border-brand-navy dark:border-brand-gold'
                                     : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                                 }`}>
                                 <Icon className="mr-4 h-6 w-6" />
@@ -73,7 +75,7 @@ export default function ErpLayout({ children }: PropsWithChildren) {
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700">
                     <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Entreprise active</div>
                     <div className="text-base font-semibold text-gray-800 dark:text-gray-100 truncate flex items-center">
-                        <Building2 className="mr-3 h-5 w-5 text-indigo-500" />
+                        <Building2 className="mr-3 h-5 w-5 text-brand-gold" />
                         {currentCompany?.name || 'FIDUCIA AFRICA'}
                     </div>
                 </div>
@@ -131,7 +133,7 @@ export default function ErpLayout({ children }: PropsWithChildren) {
                                                             key={c.id}
                                                             type="button"
                                                             onClick={() => router.post(route('companies.switch', c.id))}
-                                                            className={'w-full text-left px-3 py-2 rounded-md text-sm flex items-center justify-between ' + (currentCompany?.id === c.id ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700')}
+                                                            className={'w-full text-left px-3 py-2 rounded-md text-sm flex items-center justify-between ' + (currentCompany?.id === c.id ? 'bg-brand-navy-light text-brand-navy dark:bg-brand-navy/40 dark:text-brand-gold-light' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700')}
                                                         >
                                                             <span className="truncate">{c.name}</span>
                                                             {currentCompany?.id === c.id && <Check className="h-4 w-4 ml-2 shrink-0" />}
@@ -149,7 +151,7 @@ export default function ErpLayout({ children }: PropsWithChildren) {
                                                 {avatar ? (
                                                     <img src={avatar} alt={auth.user.name} className="h-8 w-8 rounded-full mr-2 object-cover" />
                                                 ) : (
-                                                    <div className="h-8 w-8 rounded-full mr-2 bg-indigo-600 text-white flex items-center justify-center text-sm font-bold">
+                                                    <div className="h-8 w-8 rounded-full mr-2 bg-brand-navy text-white flex items-center justify-center text-sm font-bold">
                                                         {auth.user.name.charAt(0).toUpperCase()}
                                                     </div>
                                                 )}
@@ -179,15 +181,24 @@ export default function ErpLayout({ children }: PropsWithChildren) {
                     {/* Mobile nav */}
                     {showingNavigationDropdown && (
                         <div className="md:hidden border-t border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100 dark:border-gray-700">
+                                <Building2 className="h-5 w-5 text-brand-gold shrink-0" />
+                                <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">
+                                    {currentCompany?.name || 'FIDUCIA AFRICA'}
+                                </span>
+                            </div>
                             <nav className="px-4 py-4 space-y-2">
                                 {menuItems.map((item) => {
                                     const Icon = item.icon;
-                                    const isActive = item.href === window.location.pathname;
+                                    const itemPath = new URL(item.href, window.location.origin).pathname;
+                                    const isActive = itemPath === '/dashboard'
+                                        ? window.location.pathname === itemPath
+                                        : window.location.pathname === itemPath || window.location.pathname.startsWith(itemPath + '/');
                                     return (
-                                        <Link key={item.name} href={item.href}
+                                        <Link key={item.name} href={item.href} aria-current={isActive ? 'page' : undefined}
                                             className={`flex items-center px-5 py-3 text-base font-medium rounded-lg ${
                                                 isActive
-                                                ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300'
+                                                ? 'bg-brand-navy-light text-brand-navy dark:bg-brand-navy/40 dark:text-brand-gold-light'
                                                 : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                                             }`}>
                                             <Icon className="mr-4 h-6 w-6" />

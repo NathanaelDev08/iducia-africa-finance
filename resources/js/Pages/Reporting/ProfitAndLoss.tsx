@@ -1,4 +1,4 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ErpLayout from '@/Layouts/ErpLayout';
 import { Head } from '@inertiajs/react';
 import { PageProps } from '@/types';
 
@@ -13,7 +13,7 @@ interface PnlData {
 
 export default function ProfitAndLoss({ auth, data }: PageProps<{ data: PnlData }>) {
     return (
-        <AuthenticatedLayout>
+        <ErpLayout>
             <Head title="Compte de Résultat" />
             <div className="py-12">
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
@@ -57,6 +57,6 @@ export default function ProfitAndLoss({ auth, data }: PageProps<{ data: PnlData 
                     </div>
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </ErpLayout>
     );
 }

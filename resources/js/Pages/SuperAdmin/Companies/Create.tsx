@@ -1,4 +1,4 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ErpLayout from '@/Layouts/ErpLayout';
 import { Head, useForm } from '@inertiajs/react';
 
 export default function Create({ auth }: any) {
@@ -23,7 +23,7 @@ export default function Create({ auth }: any) {
     };
 
     return (
-        <AuthenticatedLayout header={<></>}>
+        <ErpLayout>
             <Head title="Nouvelle entreprise" />
             <div className="mx-auto max-w-3xl py-8">
                 <h1 className="mb-6 text-2xl font-bold">🏢 Créer une nouvelle entreprise</h1>
@@ -99,6 +99,6 @@ export default function Create({ auth }: any) {
                     </div>
                 </form>
             </div>
-        </AuthenticatedLayout>
+        </ErpLayout>
     );
 }

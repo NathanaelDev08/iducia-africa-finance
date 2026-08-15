@@ -1,4 +1,4 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ErpLayout from '@/Layouts/ErpLayout';
 import { Head, Link } from '@inertiajs/react';
 
 export default function Dashboard({ auth, stats, recentCompanies }: any) {
@@ -11,7 +11,7 @@ export default function Dashboard({ auth, stats, recentCompanies }: any) {
     ];
 
     return (
-        <AuthenticatedLayout header={<></>}>
+        <ErpLayout>
             <Head title="Super Admin - Dashboard" />
             <div className="py-8 px-6">
                 <div className="mb-6 flex items-center justify-between">
@@ -66,6 +66,6 @@ export default function Dashboard({ auth, stats, recentCompanies }: any) {
                     </table>
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </ErpLayout>
     );
 }

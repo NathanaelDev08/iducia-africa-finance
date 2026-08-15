@@ -1,4 +1,4 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ErpLayout from '@/Layouts/ErpLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -23,7 +23,7 @@ export default function Index({ auth, companies, filters }: any) {
     };
 
     return (
-        <AuthenticatedLayout header={<></>}>
+        <ErpLayout>
             <Head title="Entreprises - Super Admin" />
             <div className="py-8 px-6">
                 <div className="mb-6 flex items-center justify-between">
@@ -51,6 +51,7 @@ export default function Index({ auth, companies, filters }: any) {
                                 <th className="px-4 py-3">Devise</th>
                                 <th className="px-4 py-3">Utilisateurs</th>
                                 <th className="px-4 py-3">Employés</th>
+                                <th className="px-4 py-3">Abonnement</th>
                                 <th className="px-4 py-3">Statut</th>
                                 <th className="px-4 py-3">Actions</th>
                             </tr>
@@ -66,6 +67,13 @@ export default function Index({ auth, companies, filters }: any) {
                                     <td className="px-4 py-3">{c.currency}</td>
                                     <td className="px-4 py-3">{c.users_count || 0}</td>
                                     <td className="px-4 py-3">{c.employees_count || 0}</td>
+                                    <td className="px-4 py-3">
+                                        {c.subscriptions?.[0]?.plan ? (
+                                            <span className="text-sm">{c.subscriptions[0].plan.name}</span>
+                                        ) : (
+                                            <span className="text-sm text-gray-400">Aucun</span>
+                                        )}
+                                    </td>
                                     <td className="px-4 py-3">
                                         <span className={`rounded px-2 py-1 text-xs ${c.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                             {c.is_active ? 'Active' : 'Suspendue'}
@@ -84,6 +92,6 @@ export default function Index({ auth, companies, filters }: any) {
                     </table>
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </ErpLayout>
     );
 }

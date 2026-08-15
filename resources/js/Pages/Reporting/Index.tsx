@@ -1,4 +1,4 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ErpLayout from '@/Layouts/ErpLayout';
 import { Head, Link } from '@inertiajs/react';
 import { PageProps } from '@/types';
 
@@ -10,7 +10,7 @@ export default function Index({ auth }: PageProps) {
     ];
 
     return (
-        <AuthenticatedLayout>
+        <ErpLayout>
             <Head title="Reporting Financier" />
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -28,6 +28,6 @@ export default function Index({ auth }: PageProps) {
                     </div>
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </ErpLayout>
     );
 }

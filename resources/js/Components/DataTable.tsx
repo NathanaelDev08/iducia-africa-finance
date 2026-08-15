@@ -177,7 +177,7 @@ export function DataTable<T = any>({
                         <button
                             key={n}
                             onClick={() => setPage(n)}
-                            className={`min-w-[32px] h-8 rounded-md text-sm font-medium ${n === page ? 'bg-[#1a3a6a] text-white shadow' : 'border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'}`}
+                            className={`min-w-[32px] h-8 rounded-md text-sm font-medium ${n === page ? 'bg-brand-navy text-white shadow' : 'border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'}`}
                         >
                             {n}
                         </button>
