@@ -33,10 +33,10 @@ export default function ForcePasswordChange() {
             <Head title="Changer mon mot de passe" />
 
             <div className="max-w-md w-full bg-white rounded-xl shadow-2xl overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 text-white text-center">
-                    <div className="text-4xl mb-2">🔐</div>
-                    <h1 className="text-xl font-bold">Première connexion</h1>
-                    <p className="text-sm opacity-90 mt-1">Définissez votre mot de passe personnel</p>
+                <div className="bg-white p-6 text-center border-b border-gray-100">
+                    <img src="/images/branding.png" alt="FIDUCIA AFRIC" className="h-24 w-auto mx-auto object-contain mb-3" />
+                    <h1 className="text-xl font-bold text-gray-900">Première connexion</h1>
+                    <p className="text-sm text-gray-500 mt-1">Définissez votre mot de passe personnel</p>
                 </div>
 
                 <form onSubmit={submit} className="p-6 space-y-4">
