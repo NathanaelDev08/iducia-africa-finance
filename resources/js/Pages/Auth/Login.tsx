@@ -121,12 +121,9 @@ export default function Login() {
                         </button>
                     </form>
 
-                    {/* Lien inscription */}
+                    {/* Comptes créés par l'administrateur uniquement */}
                     <div className="mt-6 text-center text-sm text-gray-600">
-                        Pas encore de compte ?{' '}
-                        <Link href={route('register')} className="text-[#1a3a6a] font-semibold hover:underline">
-                            Créer un compte
-                        </Link>
+                        Pas encore de compte ? Contactez votre administrateur.
                     </div>
                 </div>
 

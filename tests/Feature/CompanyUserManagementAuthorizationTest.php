@@ -24,128 +24,96 @@ class CompanyUserManagementAuthorizationTest extends TestCase
         }
     }
 
-    public function test_company_admin_cannot_create_system_admin_account(): void
+    protected function makeCompany(string $slug): Company
     {
-        $company = Company::create([
-            'name' => 'Acme',
-            'slug' => 'acme',
+        return Company::create([
+            'name' => 'Acme ' . $slug,
+            'slug' => $slug,
             'short_name' => 'ACME',
             'currency' => 'XOF',
             'timezone' => 'Africa/Abidjan',
             'is_active' => true,
         ]);
+    }
 
-        $companyAdmin = User::factory()->create(['email' => 'company-admin@example.com']);
-        $companyAdmin->companies()->attach($company->id, ['role' => 'admin', 'is_active' => true]);
-        $companyAdmin->assignRole('admin-company');
-
-        SystemModule::updateOrCreate(
-            ['code' => 'accounting'],
+    protected function makeModule(string $code): SystemModule
+    {
+        return SystemModule::updateOrCreate(
+            ['code' => $code],
             [
-                'name' => 'Comptabilité',
-                'route' => 'accounting.index',
+                'name' => ucfirst($code),
+                'route' => "$code.index",
                 'description' => 'Test',
                 'is_base_module' => false,
                 'display_order' => 1,
                 'is_active' => true,
             ]
         );
-
-        $moduleId = SystemModule::where('code', 'accounting')->value('id');
-
-        $response = $this->actingAs($companyAdmin)->post('/super-admin/users', [
-            'name' => 'New admin',
-            'email' => 'new-admin@example.com',
-            'company_id' => $company->id,
-            'role' => 'admin',
-            'modules' => [$moduleId ?? 1],
-        ]);
-
-        $response->assertStatus(403);
-        $this->assertDatabaseMissing('users', ['email' => 'new-admin@example.com']);
     }
 
-    public function test_company_admin_can_create_only_company_user_for_own_company(): void
+    public function test_company_admin_cannot_manage_users_at_all(): void
     {
-        $company = Company::create([
-            'name' => 'Acme',
-            'slug' => 'acme-2',
-            'short_name' => 'ACME2',
-            'currency' => 'XOF',
-            'timezone' => 'Africa/Abidjan',
-            'is_active' => true,
-        ]);
-
-        $companyAdmin = User::factory()->create(['email' => 'company-admin2@example.com']);
+        $company = $this->makeCompany('acme-1');
+        $companyAdmin = User::factory()->create(['email' => 'company-admin@example.com']);
         $companyAdmin->companies()->attach($company->id, ['role' => 'admin', 'is_active' => true]);
         $companyAdmin->assignRole('admin-company');
 
-        SystemModule::updateOrCreate(
-            ['code' => 'hr'],
-            [
-                'name' => 'RH',
-                'route' => 'hr.index',
-                'description' => 'Test',
-                'is_base_module' => false,
-                'display_order' => 2,
-                'is_active' => true,
-            ]
-        );
+        $module = $this->makeModule('hr');
 
-        $moduleId = SystemModule::where('code', 'hr')->value('id');
-
+        // Seul le super-admin peut créer des comptes : un admin d'entreprise
+        // n'a même pas accès aux routes de gestion des utilisateurs.
         $response = $this->actingAs($companyAdmin)->post('/super-admin/users', [
             'name' => 'New employee',
             'email' => 'new-employee@example.com',
             'company_id' => $company->id,
             'role' => 'employee',
-            'modules' => [$moduleId ?? 1],
+            'modules' => [$module->id],
+        ]);
+
+        $response->assertStatus(403);
+        $this->assertDatabaseMissing('users', ['email' => 'new-employee@example.com']);
+    }
+
+    public function test_super_admin_can_create_user_for_any_company(): void
+    {
+        $company = $this->makeCompany('acme-2');
+        $superAdmin = User::factory()->create(['email' => 'super-admin@fiducia-africa.local']);
+        $superAdmin->assignRole('super-admin');
+
+        $module = $this->makeModule('hr');
+
+        $response = $this->actingAs($superAdmin)->post('/super-admin/users', [
+            'name' => 'New employee',
+            'email' => 'new-employee@example.com',
+            'company_id' => $company->id,
+            'role' => 'employee',
+            'modules' => [$module->id],
         ]);
 
         $response->assertRedirect();
         $user = User::where('email', 'new-employee@example.com')->first();
         $this->assertNotNull($user);
+        $this->assertTrue((bool) $user->must_change_password);
         $this->assertFalse($user->hasRole('super-admin'));
         $this->assertTrue($user->hasModule('hr'));
     }
 
     public function test_module_permissions_are_persisted_for_created_user(): void
     {
-        $company = Company::create([
-            'name' => 'Acme 3',
-            'slug' => 'acme-3',
-            'short_name' => 'ACME3',
-            'currency' => 'XOF',
-            'timezone' => 'Africa/Abidjan',
-            'is_active' => true,
-        ]);
+        $company = $this->makeCompany('acme-3');
+        $superAdmin = User::factory()->create(['email' => 'super-admin2@fiducia-africa.local']);
+        $superAdmin->assignRole('super-admin');
 
-        $companyAdmin = User::factory()->create(['email' => 'company-admin3@example.com']);
-        $companyAdmin->companies()->attach($company->id, ['role' => 'admin', 'is_active' => true]);
-        $companyAdmin->assignRole('admin-company');
+        $module = $this->makeModule('settings');
 
-        SystemModule::updateOrCreate(
-            ['code' => 'settings'],
-            [
-                'name' => 'Paramétrage',
-                'route' => 'settings.index',
-                'description' => 'Test',
-                'is_base_module' => false,
-                'display_order' => 3,
-                'is_active' => true,
-            ]
-        );
-
-        $moduleId = SystemModule::where('code', 'settings')->value('id');
-
-        $response = $this->actingAs($companyAdmin)->post('/super-admin/users', [
+        $response = $this->actingAs($superAdmin)->post('/super-admin/users', [
             'name' => 'New settings user',
             'email' => 'settings-user@example.com',
             'company_id' => $company->id,
             'role' => 'employee',
-            'modules' => [$moduleId ?? 1],
+            'modules' => [$module->id],
             'module_permissions' => [[
-                'module_id' => $moduleId ?? 1,
+                'module_id' => $module->id,
                 'can_view' => true,
                 'can_create' => true,
                 'can_edit' => false,
@@ -157,7 +125,7 @@ class CompanyUserManagementAuthorizationTest extends TestCase
         $user = User::where('email', 'settings-user@example.com')->first();
         $this->assertNotNull($user);
 
-        $pivot = $user->modules()->where('system_modules.id', $moduleId ?? 1)->first()?->pivot;
+        $pivot = $user->modules()->where('system_modules.id', $module->id)->first()?->pivot;
         $this->assertNotNull($pivot);
         $this->assertTrue((bool) $pivot->can_view);
         $this->assertTrue((bool) $pivot->can_create);

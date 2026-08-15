@@ -50,6 +50,8 @@ class TenantProvisioningService
                     'name' => $data['name'],
                     'password' => Hash::make($data['password']),
                     'email_verified_at' => now(),
+                    'must_change_password' => true,
+                    'is_active' => true,
                 ]
             );
 
@@ -63,13 +65,29 @@ class TenantProvisioningService
             }
 
             // Assigner le rôle Spatie
+            $roleName = $data['role'] ?? 'employee';
             if (class_exists(\Spatie\Permission\Models\Role::class)) {
-                $roleName = $data['role'] ?? 'employee';
                 $role = \Spatie\Permission\Models\Role::firstOrCreate([
                     'name' => $roleName,
                     'guard_name' => 'web',
                 ]);
                 $user->syncRoles([$role]);
+            }
+
+            // Modules accessibles, d'après le gabarit du rôle (sinon l'utilisateur
+            // reste bloqué par CheckModuleAccess malgré son rôle Spatie).
+            $templates = DB::table('role_module_templates')->where('role_name', $roleName)->get();
+            $sync = [];
+            foreach ($templates as $t) {
+                $sync[$t->system_module_id] = [
+                    'can_view' => (bool) $t->can_view,
+                    'can_create' => (bool) $t->can_create,
+                    'can_edit' => (bool) $t->can_edit,
+                    'can_delete' => (bool) $t->can_delete,
+                ];
+            }
+            if (!empty($sync)) {
+                $user->modules()->sync($sync);
             }
 
             return $user;

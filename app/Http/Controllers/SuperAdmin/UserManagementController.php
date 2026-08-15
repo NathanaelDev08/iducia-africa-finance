@@ -12,6 +12,18 @@ use Inertia\Inertia;
 
 class UserManagementController extends Controller
 {
+    public const ROLES = [
+        'admin-company' => 'Administrateur d\'entreprise',
+        'accountant' => 'Comptable',
+        'hr-manager' => 'Responsable RH',
+        'payroll-manager' => 'Gestionnaire de Paie',
+        'tax-manager' => 'Fiscaliste',
+        'commercial' => 'Commercial',
+        'auditor' => 'Auditeur',
+        'manager' => 'Manager',
+        'employee' => 'Employé',
+    ];
+
     public function __construct(private UserProvisioningService $service)
     {
         // L'autorisation est gérée par le middleware 'super.admin' sur les routes
@@ -23,6 +35,16 @@ class UserManagementController extends Controller
             'users' => User::with(['companies', 'modules'])->latest()->get(),
             'companies' => Company::where('is_active', true)->get(['id', 'name']),
             'modules' => SystemModule::where('is_active', true)->orderBy('display_order')->get(),
+            'roles' => self::ROLES,
+        ]);
+    }
+
+    public function create()
+    {
+        return Inertia::render('SuperAdmin/Users/Create', [
+            'companies' => Company::where('is_active', true)->get(['id', 'name']),
+            'modules' => SystemModule::where('is_active', true)->orderBy('display_order')->get(),
+            'roles' => self::ROLES,
         ]);
     }
 
@@ -62,7 +84,7 @@ class UserManagementController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'company_id' => $user->companies->first()?->id,
-            'role' => 'employee',
+            'role' => $user->getRoleNames()->first() ?? 'employee',
             'modules' => $user->modules->pluck('id')->toArray(),
         ], request()->user());
 
