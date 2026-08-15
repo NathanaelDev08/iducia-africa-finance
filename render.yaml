@@ -1,0 +1,66 @@
+databases:
+  - name: fiducia-db
+    plan: free
+    postgresMajorVersion: 16
+
+services:
+  - type: web
+    name: fiducia-erp
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /up
+    envVars:
+      - key: APP_NAME
+        value: "FIDUCIA AFRIC"
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_TIMEZONE
+        value: Africa/Abidjan
+      - key: APP_LOCALE
+        value: fr
+      - key: APP_KEY
+        generateValue: true
+      - key: APP_URL
+        fromService:
+          type: web
+          name: fiducia-erp
+          property: host
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: info
+      - key: CACHE_STORE
+        value: file
+      - key: SESSION_DRIVER
+        value: cookie
+      - key: SESSION_SECURE_COOKIE
+        value: "true"
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: MAIL_MAILER
+        value: log
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: fiducia-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: fiducia-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: fiducia-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: fiducia-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: fiducia-db
+          property: password

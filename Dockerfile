@@ -5,6 +5,7 @@ RUN apk add --no-cache postgresql-client \
     postgresql-client \
     nginx \
     supervisor \
+    gettext \
     postgresql-dev \
     libpng-dev \
     libjpeg-turbo-dev \
@@ -74,7 +75,7 @@ RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cac
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Config files
-COPY docker/nginx.conf /etc/nginx/http.d/default.conf
+COPY docker/nginx.conf.template /etc/nginx/http.d/default.conf.template
 COPY docker/supervisord.conf /etc/supervisord.conf
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

@@ -3,6 +3,11 @@ set -e
 
 cd /var/www/html
 
+# Render (et d'autres PaaS) imposent le port d'écoute via $PORT ; Fly.io ne le
+# définit pas, on retombe alors sur 8080 (celui déjà déclaré dans fly.toml).
+export PORT="${PORT:-8080}"
+envsubst '${PORT}' < /etc/nginx/http.d/default.conf.template > /etc/nginx/http.d/default.conf
+
 # S'assurer que les dossiers storage existent
 mkdir -p storage/framework/{cache,sessions,views,testing}
 mkdir -p storage/logs
