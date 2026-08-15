@@ -14,6 +14,9 @@ console_command = 'php /var/www/html/artisan tinker'
     NODE_VERSION = '18'
     PHP_VERSION = '8.2'
 
+[deploy]
+  release_command = 'php artisan migrate --force'
+
 [env]
   APP_DEBUG = 'false'
   APP_ENV = 'production'
