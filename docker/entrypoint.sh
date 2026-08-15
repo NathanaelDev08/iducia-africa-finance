@@ -30,6 +30,12 @@ if [ "$APP_ENV" = "production" ]; then
     php artisan db:seed --class=Database\\Seeders\\RoleSeeder --force --no-interaction || true
     php artisan db:seed --class=Database\\Seeders\\AdminCompanySeeder --force --no-interaction || true
 
+    # Compte de secours : ne s'active que si ADMIN_RESET_PASSWORD est défini sur Render
+    # (à retirer des variables d'environnement une fois utilisé)
+    if [ -n "$ADMIN_RESET_PASSWORD" ]; then
+        php artisan admin:ensure-password "${ADMIN_RESET_EMAIL:-admin@fiducia-africa.local}" "$ADMIN_RESET_PASSWORD" || true
+    fi
+
     # Caches
     php artisan config:cache || true
     php artisan route:cache || true
