@@ -16,6 +16,12 @@ class EnforceCompanyBlock
             return $next($request);
         }
 
+        // Le super-admin ne doit jamais pouvoir se verrouiller hors du système
+        // en bloquant sa propre entreprise depuis le panneau d'administration.
+        if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
+            return $next($request);
+        }
+
         try {
             $activeId = session('active_company_id') ?? session('company_id');
             $ids = $activeId ? [$activeId] : [];

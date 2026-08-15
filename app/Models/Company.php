@@ -29,12 +29,16 @@ class Company extends Model
         'is_active',
         'suspended_at',
         'archived_at',
+        'is_blocked',
+        'blocked_at',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'suspended_at' => 'datetime',
         'archived_at' => 'datetime',
+        'is_blocked' => 'boolean',
+        'blocked_at' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -64,5 +68,33 @@ class Company extends Model
     public function subscriptions(): HasMany
     {
         return $this->hasMany(Subscription::class);
+    }
+
+    public function employees(): HasMany
+    {
+        return $this->hasMany(\App\Modules\Hr\Models\Employee::class);
+    }
+
+    public function payslips(): HasMany
+    {
+        return $this->hasMany(\App\Modules\Payroll\Models\Payslip::class);
+    }
+
+    public function clients(): HasMany
+    {
+        return $this->hasMany(\App\Modules\Sales\Models\Client::class);
+    }
+
+    public function salesInvoices(): HasMany
+    {
+        return $this->hasMany(\App\Modules\Sales\Models\SalesInvoice::class);
+    }
+
+    public function currentSubscription(): ?Subscription
+    {
+        return $this->subscriptions()
+            ->whereIn('status', ['active', 'trial'])
+            ->latest('starts_at')
+            ->first();
     }
 }

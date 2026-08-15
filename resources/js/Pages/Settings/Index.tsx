@@ -1,7 +1,7 @@
 import SettingsCrud from './SettingsCrud';
 import { useState } from 'react'; // Add this import
-import AuthenticatedLayout from '@/Layouts/ErpLayout';
-import { Head, router, useForm } from '@inertiajs/react';
+import ErpLayout from '@/Layouts/ErpLayout';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 
 export default function SettingsIndex(props: any) {
     const {
@@ -15,7 +15,7 @@ export default function SettingsIndex(props: any) {
     };
 
     return (
-        <AuthenticatedLayout>
+        <ErpLayout>
             <Head title="Paramètres" />
             <div className="min-h-screen bg-gray-100">
                 {/* En-tête */}
@@ -32,23 +32,35 @@ export default function SettingsIndex(props: any) {
                     {/* ═══ ONGLETS HORIZONTAUX (fusionnés, pas de sidebar) ═══ */}
                     <div className="mb-6 overflow-x-auto bg-white border-b border-gray-200 shadow-sm">
                         <nav className="flex">
-                            {(menu || []).map((item: any) => (
-                                <button
-                                    key={item.key}
-                                    type="button"
-                                    onClick={() => changeTab(item.key)}
-                                    title={item.description}
-                                    className={
-                                        'flex items-center gap-2 whitespace-nowrap border-b-2 px-5 py-3 text-sm font-medium transition ' +
-                                        (tab === item.key
-                                            ? 'border-gray-900 bg-gray-50 text-gray-900'
-                                            : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700')
-                                    }
-                                >
-                                    <span className="text-lg">{item.icon}</span>
-                                    <span>{item.label}</span>
-                                </button>
-                            ))}
+                            {(menu || []).map((item: any) => {
+                                const className =
+                                    'flex items-center gap-2 whitespace-nowrap border-b-2 px-5 py-3 text-sm font-medium transition ' +
+                                    (tab === item.key
+                                        ? 'border-brand-navy bg-gray-50 text-brand-navy'
+                                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700');
+
+                                if (item.href) {
+                                    return (
+                                        <Link key={item.key} href={item.href} title={item.description} className={className}>
+                                            <span className="text-lg">{item.icon}</span>
+                                            <span>{item.label}</span>
+                                        </Link>
+                                    );
+                                }
+
+                                return (
+                                    <button
+                                        key={item.key}
+                                        type="button"
+                                        onClick={() => changeTab(item.key)}
+                                        title={item.description}
+                                        className={className}
+                                    >
+                                        <span className="text-lg">{item.icon}</span>
+                                        <span>{item.label}</span>
+                                    </button>
+                                );
+                            })}
                         </nav>
                     </div>
 
@@ -63,7 +75,7 @@ export default function SettingsIndex(props: any) {
                     {tab === 'user-management' && <UserManagementSection users={users} companies={[company]} modules={modules} />}
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </ErpLayout>
     );
 }
 

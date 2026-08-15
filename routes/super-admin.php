@@ -17,5 +17,6 @@ Route::middleware(['auth', 'super.admin'])->prefix('super-admin')->name('super-a
     Route::get('/companies/{company}/edit', [CompanyController::class, 'edit'])->name('companies.edit');
     Route::put('/companies/{company}', [CompanyController::class, 'update'])->name('companies.update');
     Route::post('/companies/{company}/toggle-active', [CompanyController::class, 'toggleActive'])->name('companies.toggle');
+    Route::post('/companies/{company}/subscription', [CompanyController::class, 'updateSubscription'])->name('companies.subscription');
     Route::delete('/companies/{company}', [CompanyController::class, 'destroy'])->name('companies.destroy');
 });

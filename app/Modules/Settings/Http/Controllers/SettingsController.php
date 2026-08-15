@@ -31,6 +31,16 @@ class SettingsController extends Controller
             ['key' => 'user-management', 'label' => 'Gestion utilisateurs', 'icon' => '🛡️', 'description' => 'Comptes et modules'],
         ];
 
+        if ($request->user()?->isSuperAdmin()) {
+            $menu[] = [
+                'key' => 'super-admin',
+                'label' => 'Super Admin',
+                'icon' => '👑',
+                'description' => 'Entreprises, abonnements et activation',
+                'href' => route('super-admin.companies.index'),
+            ];
+        }
+
         $data = [
             'company' => $company,
             'tab' => $tab,

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Models\Plan;
+use App\Models\Subscription;
 use App\Services\TenantProvisioningService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -19,6 +21,7 @@ class CompanyController extends Controller
     {
         $companies = Company::query()
             ->withCount(['users', 'employees'])
+            ->with(['subscriptions' => fn ($q) => $q->whereIn('status', ['active', 'trial'])->with('plan')->latest('starts_at')->limit(1)])
             ->when($request->search, fn($q) => $q->where('name', 'ilike', '%' . $request->search . '%'))
             ->latest()
             ->paginate(15);
@@ -86,9 +89,13 @@ class CompanyController extends Controller
             'invoices' => $company->salesInvoices()->count(),
         ];
 
+        $subscription = $company->subscriptions()->with('plan')->latest('starts_at')->first();
+
         return Inertia::render('SuperAdmin/Companies/Show', [
             'company' => $company,
             'stats' => $stats,
+            'subscription' => $subscription,
+            'plans' => Plan::where('is_active', true)->orderBy('price')->get(),
         ]);
     }
 
@@ -120,16 +127,45 @@ class CompanyController extends Controller
 
     public function toggleActive(Company $company)
     {
+        // is_active pilote l'UI d'administration ; is_blocked est ce que
+        // EnforceCompanyBlock vérifie pour déconnecter immédiatement les
+        // utilisateurs de l'entreprise. Les deux doivent rester synchronisés,
+        // sinon suspendre une entreprise ici ne l'empêche pas réellement
+        // d'utiliser le système tant que ses utilisateurs restent connectés.
+        $willBeActive = !$company->is_active;
+
         $company->update([
-            'is_active' => !$company->is_active,
-            'suspended_at' => $company->is_active ? now() : null,
+            'is_active' => $willBeActive,
+            'suspended_at' => $willBeActive ? null : now(),
+            'is_blocked' => !$willBeActive,
+            'blocked_at' => $willBeActive ? null : now(),
         ]);
 
         return back()->with('success',
-            $company->is_active
+            $willBeActive
                 ? "Entreprise '{$company->name}' réactivée."
                 : "Entreprise '{$company->name}' suspendue."
         );
+    }
+
+    public function updateSubscription(Request $request, Company $company)
+    {
+        $validated = $request->validate([
+            'plan_id' => 'required|exists:plans,id',
+            'status' => 'required|in:trial,active,cancelled,expired',
+            'starts_at' => 'required|date',
+            'ends_at' => 'nullable|date|after_or_equal:starts_at',
+        ]);
+
+        // Une entreprise n'a qu'un abonnement courant : on ferme les précédents
+        // encore actifs/en essai avant d'ouvrir le nouveau.
+        $company->subscriptions()
+            ->whereIn('status', ['active', 'trial'])
+            ->update(['status' => 'cancelled', 'cancelled_at' => now()]);
+
+        $company->subscriptions()->create($validated);
+
+        return back()->with('success', 'Abonnement mis à jour pour ' . $company->name . '.');
     }
 
     public function destroy(Company $company)
