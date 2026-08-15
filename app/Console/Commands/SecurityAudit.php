@@ -42,7 +42,7 @@ class SecurityAudit extends Command
 
         // 5. MDP BDD
         $dbp = (string) (config('database.connections.pgsql.password') ?? config('database.connections.mysql.password') ?? '');
-        $weak = in_array(strtolower($dbp), ['', 'password', 'secret', 'root', '123456', 'pgsql', 'mysql', 'admin'], true);
+        $weak = in_array(strtolower($dbp), ['', 'password', 'secret', 'root', '123456', 'pgsql', 'postgres', 'mysql', 'admin'], true);
         $check('MDP base de données non faible', $weak ? 'FAIL' : 'PASS');
 
         // 6. HTTPS
@@ -65,9 +65,10 @@ class SecurityAudit extends Command
         $check('Aucune sortie brute (XSS)', $raw === 0 ? 'PASS' : 'WARN', "$raw occurrence(s)");
 
         // 10. dd/dump — idem, échapper les chaînes pour éviter modification accidentelle
-        $ddNeedle = 'd' . 'd' . '(';
-        $vdNeedle = 'v' . 'a' . 'r' . '_' . 'd' . 'u' . 'm' . 'p' . '(';
-        $dd = $this->countInDir(base_path('app'), '.php', $ddNeedle) + $this->countInDir(base_path('app'), '.php', $vdNeedle);
+        // Recherche avec limite de mot pour ne pas compter des appels comme ->add( ou ->addDays(
+        $ddPattern = '/\bd' . 'd\(/';
+        $vdPattern = '/\bvar_d' . 'ump\(/';
+        $dd = $this->countRegexInDir(base_path('app'), '.php', $ddPattern) + $this->countRegexInDir(base_path('app'), '.php', $vdPattern);
         $check('Aucun debug dump dans app/', $dd === 0 ? 'PASS' : 'WARN', "$dd occurrence(s)");
 
         // 11. CSRF
@@ -82,7 +83,8 @@ class SecurityAudit extends Command
         $check('Télémétrie protégée (hash_equals)', str_contains($tc, 'hash_equals') ? 'PASS' : 'FAIL');
 
         // 14. En-têtes sécurité
-        $check('Middleware SecurityHeaders actif', class_exists(\App\Http\Middleware\SecurityHeaders::class) ? 'PASS' : 'FAIL');
+        $bootstrapApp = (string) @file_get_contents(base_path('bootstrap/app.php'));
+        $check('Middleware SecurityHeaders actif', str_contains($bootstrapApp, 'SecurityHeaders::class') ? 'PASS' : 'FAIL');
 
         // 15. CORS
         $origins = (array) config('cors.allowed_origins', []);
@@ -126,6 +128,19 @@ class SecurityAudit extends Command
         foreach ($it as $f) {
             if ($f->isFile() && str_ends_with($f->getFilename(), $ext)) {
                 $count += substr_count((string) file_get_contents($f->getPathname()), $needle);
+            }
+        }
+        return $count;
+    }
+
+    protected function countRegexInDir(string $dir, string $ext, string $pattern): int
+    {
+        $count = 0;
+        if (!is_dir($dir)) return 0;
+        $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS));
+        foreach ($it as $f) {
+            if ($f->isFile() && str_ends_with($f->getFilename(), $ext)) {
+                $count += preg_match_all($pattern, (string) file_get_contents($f->getPathname()));
             }
         }
         return $count;
