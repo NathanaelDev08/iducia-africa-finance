@@ -111,27 +111,58 @@ class TestDataSeeder extends Seeder
     protected function seedUsers(): void
     {
         $users = [
-            ['name' => 'Awa KONÉ', 'email' => 'comptable@fiducia-africa.com'],
-            ['name' => 'Moussa TRAORÉ', 'email' => 'rh@fiducia-africa.com'],
-            ['name' => 'Fatou DIABATÉ', 'email' => 'commercial@fiducia-africa.com'],
+            ['name' => 'Awa KONÉ', 'email' => 'comptable@fiducia-africa.com', 'role' => 'accountant'],
+            ['name' => 'Moussa TRAORÉ', 'email' => 'rh@fiducia-africa.com', 'role' => 'hr-manager'],
+            ['name' => 'Fatou DIABATÉ', 'email' => 'commercial@fiducia-africa.com', 'role' => 'commercial'],
         ];
         $created = 0;
         foreach ($users as $data) {
-            if (User::where('email', $data['email'])->exists()) continue;
+            $user = User::where('email', $data['email'])->first();
+
+            if (!$user) {
+                try {
+                    $user = User::create([
+                        'name' => $data['name'],
+                        'email' => $data['email'],
+                        'password' => Hash::make('password123'),
+                        'email_verified_at' => now(),
+                    ]);
+                    foreach (Company::all() as $c) {
+                        try { $user->companies()->syncWithoutDetaching([$c->id => ['role' => 'admin']]); }
+                        catch (\Throwable $e) {
+                            try { $user->companies()->syncWithoutDetaching([$c->id]); } catch (\Throwable $e2) {}
+                        }
+                    }
+                    $created++;
+                } catch (\Throwable $e) {
+                    continue;
+                }
+            }
+
+            // Rôle Spatie + permissions de modules, pour que le compte ait réellement
+            // accès aux pages correspondantes (hasModule() ne lit que ces tables).
             try {
-                $user = User::create([
-                    'name' => $data['name'],
-                    'email' => $data['email'],
-                    'password' => Hash::make('password123'),
-                    'email_verified_at' => now(),
-                ]);
-                foreach (Company::all() as $c) {
-                    try { $user->companies()->syncWithoutDetaching([$c->id => ['role' => 'admin']]); }
-                    catch (\Throwable $e) {
-                        try { $user->companies()->syncWithoutDetaching([$c->id]); } catch (\Throwable $e2) {}
+                if (method_exists($user, 'syncRoles')) {
+                    $user->syncRoles([$data['role']]);
+                }
+            } catch (\Throwable $e) {}
+
+            try {
+                if (Schema::hasTable('role_module_templates') && Schema::hasTable('user_module_permissions')) {
+                    $templates = DB::table('role_module_templates')->where('role_name', $data['role'])->get();
+                    $sync = [];
+                    foreach ($templates as $t) {
+                        $sync[$t->system_module_id] = [
+                            'can_view' => (bool) $t->can_view,
+                            'can_create' => (bool) $t->can_create,
+                            'can_edit' => (bool) $t->can_edit,
+                            'can_delete' => (bool) $t->can_delete,
+                        ];
+                    }
+                    if (!empty($sync) && method_exists($user, 'modules')) {
+                        $user->modules()->sync($sync);
                     }
                 }
-                $created++;
             } catch (\Throwable $e) {}
         }
         echo "👥 Utilisateurs : {$created} créé(s) [mot de passe : password123]\n";
@@ -300,23 +331,23 @@ class TestDataSeeder extends Seeder
 
     protected function seedContracts(): void
     {
-        if (!$this->hasTable('contracts')) { echo "⚠ Table contracts absente\n"; return; }
+        if (!$this->hasTable('employee_contracts')) { echo "⚠ Table employee_contracts absente\n"; return; }
 
+        $cdi = DB::table('contract_types')->where('code', 'CDI')->value('id');
         $employees = DB::table('employees')->where('company_id', $this->company->id)->get();
         $created = 0;
 
         foreach ($employees as $emp) {
             try {
-                if (DB::table('contracts')->where('employee_id', $emp->id)->exists()) continue;
+                if (DB::table('employee_contracts')->where('employee_id', $emp->id)->exists()) continue;
             } catch (\Throwable $e) { continue; }
 
-            $id = $this->insertRow('contracts', [
+            $id = $this->insertRow('employee_contracts', [
                 'employee_id' => $emp->id,
-                'contract_type' => 'CDI',
-                'type' => 'CDI',
+                'contract_type_id' => $cdi,
+                'contract_number' => 'CTR-' . str_pad($emp->id, 4, '0', STR_PAD_LEFT),
                 'start_date' => $emp->hire_date ?? now()->toDateString(),
                 'status' => 'active',
-                'salary' => $emp->base_salary ?? $emp->salary ?? 0,
                 'base_salary' => $emp->base_salary ?? 0,
             ]);
             if ($id) $created++;
@@ -1081,7 +1112,7 @@ class TestDataSeeder extends Seeder
     {
         echo "📊 RÉCAPITULATIF DE LA BASE :\n\n";
         $tables = ['users', 'companies', 'accounts', 'journals', 'journal_entries', 'journal_items',
-                   'departments', 'positions', 'employees', 'contracts',
+                   'departments', 'positions', 'employees', 'employee_contracts',
                    'pay_runs', 'payslips', 'payslip_items', 'pay_items', 'social_contributions',
                    'clients', 'sales_invoices', 'suppliers', 'purchase_invoices',
                    'assets', 'exchange_rates', 'vat_declarations', 'taxes', 'settings'];
