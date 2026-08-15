@@ -74,6 +74,9 @@ class AccountingReportService
     public function getCharts(Company $company)
     {
         $start = now()->subMonths(11)->startOfMonth()->toDateString();
+        $monthExpr = DB::connection()->getDriverName() === 'sqlite'
+            ? "strftime('%Y-%m', journal_entries.entry_date)"
+            : "TO_CHAR(journal_entries.entry_date, 'YYYY-MM')";
 
         $base = DB::table('journal_items')
             ->join('journal_entries', 'journal_items.journal_entry_id', '=', 'journal_entries.id')
@@ -86,7 +89,7 @@ class AccountingReportService
         $monthlyRows = (clone $base)
             ->whereIn('accounts.class_number', [6, 7])
             ->select(
-                DB::raw("TO_CHAR(journal_entries.entry_date, 'YYYY-MM') AS month"),
+                DB::raw("{$monthExpr} AS month"),
                 'accounts.class_number',
                 DB::raw('SUM(journal_items.debit) AS total_debit'),
                 DB::raw('SUM(journal_items.credit) AS total_credit')
@@ -121,7 +124,7 @@ class AccountingReportService
         $cashRows = (clone $base)
             ->where('accounts.class_number', 5)
             ->select(
-                DB::raw("TO_CHAR(journal_entries.entry_date, 'YYYY-MM') AS month"),
+                DB::raw("{$monthExpr} AS month"),
                 DB::raw('SUM(journal_items.debit) AS total_debit'),
                 DB::raw('SUM(journal_items.credit) AS total_credit')
             )
