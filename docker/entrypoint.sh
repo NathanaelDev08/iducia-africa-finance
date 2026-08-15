@@ -25,7 +25,11 @@ if [ "$APP_ENV" = "production" ]; then
     
     # Migrations
     php artisan migrate --force --no-interaction || echo "⚠ Migrations skipped"
-    
+
+    # Compte super admin par défaut (idempotent : ne recrée rien si déjà présent)
+    php artisan db:seed --class=Database\\Seeders\\RoleSeeder --force --no-interaction || true
+    php artisan db:seed --class=Database\\Seeders\\AdminCompanySeeder --force --no-interaction || true
+
     # Caches
     php artisan config:cache || true
     php artisan route:cache || true

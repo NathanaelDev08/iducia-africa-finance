@@ -19,6 +19,7 @@ class AdminCompanySeeder extends Seeder
                 'email' => 'admin@fiducia-africa.local',
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
+                'must_change_password' => true,
             ]);
         }
 
