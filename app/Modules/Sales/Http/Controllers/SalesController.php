@@ -62,19 +62,19 @@ class SalesController extends Controller
 
     /* CLIENTS */
     public function storeClient(Request $request){ $d=$request->validate(['code' => ['required', 'string', 'max:20', \Illuminate\Validation\Rule::unique('clients')->where('company_id', $this->company($request)->id)],'name'=>'required|string|max:255','contact_name'=>'nullable|string','email'=>'nullable|email','phone'=>'nullable|string','address'=>'nullable|string','tax_number'=>'nullable|string','account_number'=>'nullable|string']); Client::create(array_merge($d,['company_id'=>$this->company($request)->id])); return back()->with('success','Client créé.'); }
-    public function updateClient(Request $request, Client $client){ $d=$request->validate(['code' => ['required', 'string', 'max:20', \Illuminate\Validation\Rule::unique('clients')->where('company_id', $this->company($request)->id)],'name'=>'required|string|max:255','contact_name'=>'nullable|string','email'=>'nullable|email','phone'=>'nullable|string','address'=>'nullable|string','tax_number'=>'nullable|string','account_number'=>'nullable|string']); $client->update($d); return back()->with('success','Client mis à jour.'); }
-    public function destroyClient(Request $request, Client $client){ if($client->invoices()->count()>0) return back()->with('error','Impossible : ce client a des factures.'); $client->delete(); return back()->with('success','Client supprimé.'); }
+    public function updateClient(Request $request, Client $client){ if($client->company_id!==$this->company($request)->id) abort(403); $d=$request->validate(['code' => ['required', 'string', 'max:20', \Illuminate\Validation\Rule::unique('clients')->where('company_id', $this->company($request)->id)],'name'=>'required|string|max:255','contact_name'=>'nullable|string','email'=>'nullable|email','phone'=>'nullable|string','address'=>'nullable|string','tax_number'=>'nullable|string','account_number'=>'nullable|string']); $client->update($d); return back()->with('success','Client mis à jour.'); }
+    public function destroyClient(Request $request, Client $client){ if($client->company_id!==$this->company($request)->id) abort(403); if($client->invoices()->count()>0) return back()->with('error','Impossible : ce client a des factures.'); $client->delete(); return back()->with('success','Client supprimé.'); }
 
     /* DEVIS */
     public function storeOrder(Request $request){
-        $d=$request->validate(['client_id'=>'required|exists:clients,id','validity_date'=>'nullable|date','items'=>'required|array|min:1','items.*.description'=>'required|string','items.*.quantity'=>'required|numeric|min:0.01','items.*.unit_price'=>'required|numeric|min:0','items.*.tax_rate'=>'required|numeric|min:0']);
         $company=$this->company($request);
+        $d=$request->validate(['client_id'=>['required', Rule::exists('clients','id')->where('company_id',$company->id)],'validity_date'=>'nullable|date','items'=>'required|array|min:1','items.*.description'=>'required|string','items.*.quantity'=>'required|numeric|min:0.01','items.*.unit_price'=>'required|numeric|min:0','items.*.tax_rate'=>'required|numeric|min:0']);
         $order=SalesOrder::create(['company_id'=>$company->id,'client_id'=>$d['client_id'],'reference'=>$this->nextRef('DEV','sales_orders'),'order_date'=>now(),'validity_date'=>$d['validity_date']??null,'status'=>'draft']);
         $this->saveOrderItems($order,$d['items']);
         return back()->with('success','Devis '.$order->reference.' créé.');
     }
-    public function updateOrderStatus(Request $request, SalesOrder $order){ $d=$request->validate(['status'=>'required|in:draft,sent,accepted,refused,invoiced']); $order->update($d); return back()->with('success','Statut mis à jour.'); }
-    public function destroyOrder(Request $request, SalesOrder $order){ if($order->status!=='draft') return back()->with('error','Seuls les brouillons peuvent être supprimés.'); $order->delete(); return back()->with('success','Devis supprimé.'); }
+    public function updateOrderStatus(Request $request, SalesOrder $order){ if($order->company_id!==$this->company($request)->id) abort(403); $d=$request->validate(['status'=>'required|in:draft,sent,accepted,refused,invoiced']); $order->update($d); return back()->with('success','Statut mis à jour.'); }
+    public function destroyOrder(Request $request, SalesOrder $order){ if($order->company_id!==$this->company($request)->id) abort(403); if($order->status!=='draft') return back()->with('error','Seuls les brouillons peuvent être supprimés.'); $order->delete(); return back()->with('success','Devis supprimé.'); }
     private function saveOrderItems(SalesOrder $order, array $items): void {
         $order->items()->delete(); $ht=$tax=0;
         foreach($items as $it){ $h=(float)$it['quantity']*(float)$it['unit_price']; $t=$h*(float)$it['tax_rate']/100; $ht+=$h; $tax+=$t;
@@ -84,14 +84,14 @@ class SalesController extends Controller
 
     /* FACTURES */
     public function storeInvoice(Request $request){
-        $d=$request->validate(['client_id'=>'required|exists:clients,id','invoice_date'=>'required|date','due_date'=>'nullable|date','items'=>'required|array|min:1','items.*.description'=>'required|string','items.*.account_id'=>'nullable|exists:accounts,id','items.*.quantity'=>'required|numeric|min:0.01','items.*.unit_price'=>'required|numeric|min:0','items.*.tax_rate'=>'required|numeric|min:0']);
         $company=$this->company($request);
+        $d=$request->validate(['client_id'=>['required', Rule::exists('clients','id')->where('company_id',$company->id)],'invoice_date'=>'required|date','due_date'=>'nullable|date','items'=>'required|array|min:1','items.*.description'=>'required|string','items.*.account_id'=>['nullable', Rule::exists('accounts','id')->where('company_id',$company->id)],'items.*.quantity'=>'required|numeric|min:0.01','items.*.unit_price'=>'required|numeric|min:0','items.*.tax_rate'=>'required|numeric|min:0']);
         $invoice=SalesInvoice::create(['company_id'=>$company->id,'client_id'=>$d['client_id'],'reference'=>$this->nextRef('FV','sales_invoices'),'invoice_date'=>$d['invoice_date'],'due_date'=>$d['due_date']??null,'status'=>'draft']);
         $this->saveInvoiceItems($invoice,$d['items']);
         return back()->with('success','Facture '.$invoice->reference.' créée.');
     }
-    public function postInvoice(Request $request, SalesInvoice $invoice){ try{ app(SalesAccountingService::class)->postInvoice($invoice); return back()->with('success','Facture comptabilisée.'); }catch(\Exception $e){ return back()->with('error',$e->getMessage()); } }
-    public function destroyInvoice(Request $request, SalesInvoice $invoice){ if($invoice->accounting_entry_id) return back()->with('error','Facture déjà comptabilisée.'); if($invoice->status!=='draft') return back()->with('error','Seuls les brouillons peuvent être supprimés.'); $invoice->delete(); return back()->with('success','Facture supprimée.'); }
+    public function postInvoice(Request $request, SalesInvoice $invoice){ if($invoice->company_id!==$this->company($request)->id) abort(403); try{ app(SalesAccountingService::class)->postInvoice($invoice); return back()->with('success','Facture comptabilisée.'); }catch(\Exception $e){ return back()->with('error',$e->getMessage()); } }
+    public function destroyInvoice(Request $request, SalesInvoice $invoice){ if($invoice->company_id!==$this->company($request)->id) abort(403); if($invoice->accounting_entry_id) return back()->with('error','Facture déjà comptabilisée.'); if($invoice->status!=='draft') return back()->with('error','Seuls les brouillons peuvent être supprimés.'); $invoice->delete(); return back()->with('success','Facture supprimée.'); }
     private function saveInvoiceItems(SalesInvoice $invoice, array $items): void {
         $invoice->items()->delete(); $ht=$tax=0;
         foreach($items as $it){ $h=(float)$it['quantity']*(float)$it['unit_price']; $t=$h*(float)$it['tax_rate']/100; $ht+=$h; $tax+=$t;
@@ -101,11 +101,12 @@ class SalesController extends Controller
 
     /* ENCAISSEMENTS */
     public function storePayment(Request $request){
-        $d=$request->validate(['client_id'=>'required|exists:clients,id','sales_invoice_id'=>'nullable|exists:sales_invoices,id','payment_date'=>'required|date','payment_method'=>'required|in:bank,cash,check,mobile','amount'=>'required|numeric|min:0.01','notes'=>'nullable|string']);
+        $company=$this->company($request);
+        $d=$request->validate(['client_id'=>['required', Rule::exists('clients','id')->where('company_id',$company->id)],'sales_invoice_id'=>['nullable', Rule::exists('sales_invoices','id')->where('company_id',$company->id)],'payment_date'=>'required|date','payment_method'=>'required|in:bank,cash,check,mobile','amount'=>'required|numeric|min:0.01','notes'=>'nullable|string']);
         if($d['sales_invoice_id']){ $inv=SalesInvoice::find($d['sales_invoice_id']); if((float)$d['amount']>$inv->remainingAmount()) return back()->with('error','Montant supérieur au reste à payer.'); }
-        CustomerPayment::create(['company_id'=>$this->company($request)->id,'client_id'=>$d['client_id'],'sales_invoice_id'=>$d['sales_invoice_id']??null,'reference'=>$this->nextRef('ENC','customer_payments'),'payment_date'=>$d['payment_date'],'payment_method'=>$d['payment_method'],'amount'=>$d['amount'],'notes'=>$d['notes']??null]);
+        CustomerPayment::create(['company_id'=>$company->id,'client_id'=>$d['client_id'],'sales_invoice_id'=>$d['sales_invoice_id']??null,'reference'=>$this->nextRef('ENC','customer_payments'),'payment_date'=>$d['payment_date'],'payment_method'=>$d['payment_method'],'amount'=>$d['amount'],'notes'=>$d['notes']??null]);
         return back()->with('success','Encaissement enregistré.');
     }
-    public function postPayment(Request $request, CustomerPayment $payment){ try{ app(SalesAccountingService::class)->postPayment($payment); return back()->with('success','Encaissement comptabilisé.'); }catch(\Exception $e){ return back()->with('error',$e->getMessage()); } }
-    public function destroyPayment(Request $request, CustomerPayment $payment){ if($payment->accounting_entry_id) return back()->with('error','Encaissement déjà comptabilisé.'); $payment->delete(); return back()->with('success','Encaissement supprimé.'); }
+    public function postPayment(Request $request, CustomerPayment $payment){ if($payment->company_id!==$this->company($request)->id) abort(403); try{ app(SalesAccountingService::class)->postPayment($payment); return back()->with('success','Encaissement comptabilisé.'); }catch(\Exception $e){ return back()->with('error',$e->getMessage()); } }
+    public function destroyPayment(Request $request, CustomerPayment $payment){ if($payment->company_id!==$this->company($request)->id) abort(403); if($payment->accounting_entry_id) return back()->with('error','Encaissement déjà comptabilisé.'); $payment->delete(); return back()->with('success','Encaissement supprimé.'); }
 }

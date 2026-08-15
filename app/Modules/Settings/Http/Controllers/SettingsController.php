@@ -92,6 +92,9 @@ class SettingsController extends Controller
 
     public function updateCompany(Request $request, Company $company)
     {
+        $activeCompany = $request->attributes->get('company');
+        abort_unless($activeCompany && $company->id === $activeCompany->id, 403);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'short_name' => 'nullable|string|max:20',
@@ -109,6 +112,9 @@ class SettingsController extends Controller
 
     public function updateSettings(Request $request, Company $company)
     {
+        $activeCompany = $request->attributes->get('company');
+        abort_unless($activeCompany && $company->id === $activeCompany->id, 403);
+
         $validated = $request->validate([
             'language' => 'required|in:fr,en',
             'timezone' => 'required|string',
@@ -137,13 +143,15 @@ class SettingsController extends Controller
     public function updateTax(Request $request, $id)
     {
         $v = $request->validate(['name'=>'required|string|max:100','code'=>'required|string|max:20','type'=>'required|in:vat,other']);
-        DB::table('taxes')->where('id',$id)->update(['name'=>$v['name'],'code'=>$v['code'],'type'=>$v['type'],'updated_at'=>now()]);
+        $company = $request->attributes->get('company') ?? Company::first();
+        DB::table('taxes')->where('id',$id)->where('company_id', $company->id)->update(['name'=>$v['name'],'code'=>$v['code'],'type'=>$v['type'],'updated_at'=>now()]);
         return back()->with('success', 'Taxe mise à jour.');
     }
 
-    public function destroyTax($id)
+    public function destroyTax(Request $request, $id)
     {
-        DB::table('taxes')->where('id',$id)->delete();
+        $company = $request->attributes->get('company') ?? Company::first();
+        DB::table('taxes')->where('id',$id)->where('company_id', $company->id)->delete();
         return back()->with('success', 'Taxe supprimée.');
     }
 
@@ -173,8 +181,17 @@ class SettingsController extends Controller
     }
 
     // ═══════════ STATUT UTILISATEUR ═══════════
-    public function toggleUser(\App\Models\User $user)
+    public function toggleUser(Request $request, \App\Models\User $user)
     {
+        $company = $request->attributes->get('company') ?? Company::first();
+        $actor = $request->user();
+
+        $isAllowed = $actor->isSuperAdmin()
+            || ($company && $actor->companies()->where('companies.id', $company->id)->wherePivot('role', 'admin')->exists());
+
+        abort_unless($isAllowed, 403, 'Action réservée aux administrateurs de l\'entreprise.');
+        abort_unless($company && $user->companies()->where('companies.id', $company->id)->exists(), 404);
+
         $user->update(['is_active' => !$user->is_active]);
         return back()->with('success', $user->is_active ? 'Compte réactivé.' : 'Compte désactivé.');
     }

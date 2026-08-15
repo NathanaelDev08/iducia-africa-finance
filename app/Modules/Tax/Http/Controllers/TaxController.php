@@ -148,6 +148,7 @@ class TaxController extends Controller
 
     public function updateTax(Request $request, Tax $tax)
     {
+        if ($tax->company_id && $tax->company_id !== $this->company($request)->id) abort(403);
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|in:vat,withholding,income_tax,ts,other',
@@ -163,12 +164,14 @@ class TaxController extends Controller
 
     public function destroyTax(Request $request, Tax $tax)
     {
+        if ($tax->company_id && $tax->company_id !== $this->company($request)->id) abort(403);
         $tax->delete();
         return back()->with('success', 'Taxe supprimée.');
     }
 
     public function storeRate(Request $request, Tax $tax)
     {
+        if ($tax->company_id && $tax->company_id !== $this->company($request)->id) abort(403);
         $data = $request->validate([
             'rate' => 'required|numeric|min:0|max:100',
             'effective_from' => 'required|date',

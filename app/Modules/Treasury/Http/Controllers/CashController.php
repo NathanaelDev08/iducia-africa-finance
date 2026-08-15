@@ -90,6 +90,7 @@ class CashController extends Controller
 
     public function destroyRegister(Request $request, CashRegister $register)
     {
+        if ($register->company_id !== $this->company($request)->id) abort(403);
         $register->transactions()->delete();
         $register->delete();
 
@@ -98,8 +99,9 @@ class CashController extends Controller
 
     public function storeTransaction(Request $request)
     {
+        $company = $this->company($request);
         $data = $request->validate([
-            'cash_register_id' => 'required|exists:cash_registers,id',
+            'cash_register_id' => ['required', \Illuminate\Validation\Rule::exists('cash_registers', 'id')->where('company_id', $company->id)],
             'transaction_date' => 'required|date',
             'reference' => 'nullable|string',
             'description' => 'nullable|string',
@@ -122,6 +124,7 @@ class CashController extends Controller
 
     public function destroyTransaction(Request $request, CashTransaction $transaction)
     {
+        if ($transaction->register->company_id !== $this->company($request)->id) abort(403);
         $transaction->delete();
 
         return back()->with('success', 'Transaction supprimée.');
@@ -131,7 +134,7 @@ class CashController extends Controller
     {
         $request->validate([
             'register_id' => 'required|exists:cash_registers,id',
-            'file' => 'required|file|mimes:csv,txt,json',
+            'file' => 'required|file|mimes:csv,txt,json|max:5120',
         ]);
 
         $register = CashRegister::where('company_id', $this->company($request)->id)
@@ -282,7 +285,7 @@ class CashController extends Controller
             fwrite($handle, "\xEF\xBB\xBF");
             fputcsv($handle, $header, ';');
             foreach ($rows as $row) {
-                fputcsv($handle, $row, ';');
+                fputcsv($handle, array_map([$this, 'sanitizeCsvCell'], $row), ';');
             }
             fclose($handle);
         };
@@ -291,5 +294,19 @@ class CashController extends Controller
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ]);
+    }
+
+    /**
+     * Neutralise l'injection de formule CSV : si une cellule commence par
+     * =, +, -, ou @, un tableur (Excel, LibreOffice...) peut l'interpréter
+     * comme une formule. On préfixe d'une apostrophe pour forcer le texte.
+     */
+    protected function sanitizeCsvCell($value)
+    {
+        if (is_string($value) && $value !== '' && in_array($value[0], ['=', '+', '-', '@'], true)) {
+            return "'" . $value;
+        }
+
+        return $value;
     }
 }

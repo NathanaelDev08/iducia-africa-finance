@@ -104,7 +104,7 @@ class ReportingController extends Controller
             fwrite($handle, "\xEF\xBB\xBF");
             fputcsv($handle, $header, ';');
             foreach ($rows as $row) {
-                fputcsv($handle, $row, ';');
+                fputcsv($handle, array_map([$this, 'sanitizeCsvCell'], $row), ';');
             }
             fclose($handle);
         };
@@ -113,5 +113,19 @@ class ReportingController extends Controller
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ]);
+    }
+
+    /**
+     * Neutralise l'injection de formule CSV : si une cellule commence par
+     * =, +, -, ou @, un tableur (Excel, LibreOffice...) peut l'interpréter
+     * comme une formule. On préfixe d'une apostrophe pour forcer le texte.
+     */
+    protected function sanitizeCsvCell($value)
+    {
+        if (is_string($value) && $value !== '' && in_array($value[0], ['=', '+', '-', '@'], true)) {
+            return "'" . $value;
+        }
+
+        return $value;
     }
 }

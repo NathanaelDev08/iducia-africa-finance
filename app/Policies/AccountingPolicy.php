@@ -70,6 +70,12 @@ class AccountingPolicy
      */
     public function update(User $user, AccountingEntry $entry): bool
     {
+        $companyIds = $user->companies()->pluck('companies.id')->toArray();
+
+        if (!in_array($entry->company_id, $companyIds)) {
+            return false;
+        }
+
         if ($entry->status !== 'draft') {
             return false;
         }
@@ -86,6 +92,12 @@ class AccountingPolicy
      */
     public function validate(User $user, AccountingEntry $entry): bool
     {
+        $companyIds = $user->companies()->pluck('companies.id')->toArray();
+
+        if (!in_array($entry->company_id, $companyIds)) {
+            return false;
+        }
+
         return $user->hasAnyRole([
             'super-admin',
             'admin-company',
@@ -99,6 +111,12 @@ class AccountingPolicy
      */
     public function delete(User $user, AccountingEntry $entry): bool
     {
+        $companyIds = $user->companies()->pluck('companies.id')->toArray();
+
+        if (!in_array($entry->company_id, $companyIds)) {
+            return false;
+        }
+
         return $user->hasRole('super-admin') && $entry->status === 'draft';
     }
 
@@ -107,6 +125,12 @@ class AccountingPolicy
      */
     public function reverse(User $user, AccountingEntry $entry): bool
     {
+        $companyIds = $user->companies()->pluck('companies.id')->toArray();
+
+        if (!in_array($entry->company_id, $companyIds)) {
+            return false;
+        }
+
         return $user->hasAnyRole([
             'super-admin',
             'admin-company',

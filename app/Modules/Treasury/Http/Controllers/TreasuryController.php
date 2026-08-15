@@ -113,6 +113,7 @@ class TreasuryController extends Controller
 
     public function destroyStatement(Request $request, BankStatement $statement)
     {
+        if ($statement->company_id !== $this->company($request)->id) abort(403);
         $statement->lines()->update(['matched_journal_item_id'=>null,'status'=>'unmatched']);
         $statement->delete();
         return back()->with('success', 'Relevé supprimé.');
@@ -120,32 +121,40 @@ class TreasuryController extends Controller
 
     public function storeLine(Request $request)
     {
-        $d = $request->validate(['bank_statement_id'=>'required|exists:bank_statements,id','transaction_date'=>'required|date','reference'=>'nullable|string','description'=>'nullable|string','debit'=>'nullable|numeric|min:0','credit'=>'nullable|numeric|min:0']);
+        $company = $this->company($request);
+        $d = $request->validate(['bank_statement_id'=>['required', \Illuminate\Validation\Rule::exists('bank_statements','id')->where('company_id', $company->id)],'transaction_date'=>'required|date','reference'=>'nullable|string','description'=>'nullable|string','debit'=>'nullable|numeric|min:0','credit'=>'nullable|numeric|min:0']);
         BankStatementLine::create(['bank_statement_id'=>$d['bank_statement_id'],'transaction_date'=>$d['transaction_date'],'reference'=>$d['reference']??null,'description'=>$d['description']??null,'debit'=>$d['debit']??0,'credit'=>$d['credit']??0,'status'=>'unmatched']);
         return back()->with('success', 'Ligne ajoutée.');
     }
 
     public function matchLine(Request $request, BankStatementLine $line)
     {
-        $d = $request->validate(['journal_item_id'=>'required|exists:journal_items,id']);
+        $company = $this->company($request);
+        if ($line->statement->company_id !== $company->id) abort(403);
+        $d = $request->validate(['journal_item_id'=>['required', \Illuminate\Validation\Rule::exists('journal_items','id')->where(function ($q) use ($company) {
+            $q->whereIn('journal_entry_id', \App\Modules\Accounting\Models\JournalEntry::where('company_id', $company->id)->pluck('id'));
+        })]]);
         $line->update(['matched_journal_item_id'=>$d['journal_item_id'],'status'=>'matched']);
         return back()->with('success', 'Ligne rapprochée.');
     }
 
     public function unmatchLine(Request $request, BankStatementLine $line)
     {
+        if ($line->statement->company_id !== $this->company($request)->id) abort(403);
         $line->update(['matched_journal_item_id'=>null,'status'=>'unmatched']);
         return back()->with('success', 'Rapprochement annulé.');
     }
 
     public function destroyLine(Request $request, BankStatementLine $line)
     {
+        if ($line->statement->company_id !== $this->company($request)->id) abort(403);
         $line->delete();
         return back()->with('success', 'Ligne supprimée.');
     }
 
     public function reconcile(Request $request, BankStatement $statement)
     {
+        if ($statement->company_id !== $this->company($request)->id) abort(403);
         $unmatched = $statement->lines()->where('status','unmatched')->count();
         if ($unmatched > 0) return back()->with('error', $unmatched . ' ligne(s) non rapprochée(s).');
         $statement->update(['status'=>'reconciled']);

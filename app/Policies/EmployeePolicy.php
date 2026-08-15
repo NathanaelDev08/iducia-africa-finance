@@ -66,6 +66,12 @@ class EmployeePolicy
      */
     public function update(User $user, Employee $employee): bool
     {
+        $companyIds = $user->companies()->pluck('companies.id')->toArray();
+
+        if (!in_array($employee->company_id, $companyIds)) {
+            return false;
+        }
+
         return $user->hasAnyRole([
             'super-admin',
             'admin-company',
@@ -78,6 +84,12 @@ class EmployeePolicy
      */
     public function delete(User $user, Employee $employee): bool
     {
+        $companyIds = $user->companies()->pluck('companies.id')->toArray();
+
+        if (!in_array($employee->company_id, $companyIds)) {
+            return false;
+        }
+
         return $user->hasRole('super-admin');
     }
 
@@ -86,6 +98,12 @@ class EmployeePolicy
      */
     public function viewSensitiveData(User $user, Employee $employee): bool
     {
+        $companyIds = $user->companies()->pluck('companies.id')->toArray();
+
+        if (!in_array($employee->company_id, $companyIds)) {
+            return false;
+        }
+
         return $user->hasAnyRole([
             'super-admin',
             'admin-company',

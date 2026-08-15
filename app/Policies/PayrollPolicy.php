@@ -59,6 +59,12 @@ class PayrollPolicy
      */
     public function validate(User $user, PayRun $payRun): bool
     {
+        $companyIds = $user->companies()->pluck('companies.id')->toArray();
+
+        if (!in_array($payRun->company_id, $companyIds)) {
+            return false;
+        }
+
         return $user->hasAnyRole([
             'super-admin',
             'admin-company',
@@ -71,6 +77,12 @@ class PayrollPolicy
      */
     public function lock(User $user, PayRun $payRun): bool
     {
+        $companyIds = $user->companies()->pluck('companies.id')->toArray();
+
+        if (!in_array($payRun->company_id, $companyIds)) {
+            return false;
+        }
+
         return $user->hasAnyRole([
             'super-admin',
             'admin-company',

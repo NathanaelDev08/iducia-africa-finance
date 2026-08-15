@@ -87,6 +87,7 @@ class AccountingController extends Controller
 
     public function updateAccount(Request $request, Account $account)
     {
+        if ($account->company_id !== $this->company($request)->id) abort(403);
         $data = $request->validate(['number' => ['required', 'string', 'max:20', \Illuminate\Validation\Rule::unique('accounts')->where(function ($q) use ($request) { $q->where('company_id', $this->company($request)->id); })], 'name' => 'required|string|max:255', 'is_active' => 'boolean']);
         $account->update($data);
         return back()->with('success', 'Compte mis à jour.');
@@ -94,6 +95,7 @@ class AccountingController extends Controller
 
     public function destroyAccount(Request $request, Account $account)
     {
+        if ($account->company_id !== $this->company($request)->id) abort(403);
         $account->delete();
         return back()->with('success', 'Compte supprimé.');
     }
@@ -108,6 +110,7 @@ class AccountingController extends Controller
 
     public function updateJournal(Request $request, Journal $journal)
     {
+        if ($journal->company_id !== $this->company($request)->id) abort(403);
         $data = $request->validate(['code' => ['required', 'string', 'max:10', \Illuminate\Validation\Rule::unique('journals')->where('company_id', $this->company($request)->id)], 'name' => 'required|string|max:255', 'is_active' => 'boolean']);
         $journal->update($data);
         return back()->with('success', 'Journal mis à jour.');
@@ -115,6 +118,7 @@ class AccountingController extends Controller
 
     public function destroyJournal(Request $request, Journal $journal)
     {
+        if ($journal->company_id !== $this->company($request)->id) abort(403);
         $journal->delete();
         return back()->with('success', 'Journal supprimé.');
     }
@@ -144,6 +148,7 @@ class AccountingController extends Controller
 
     public function closeFiscalYear(Request $request, FiscalYear $fiscalYear)
     {
+        if ($fiscalYear->company_id !== $this->company($request)->id) abort(403);
         $fiscalYear->update(['status' => 'closed']);
         $fiscalYear->periods()->update(['status' => 'closed']);
         return back()->with('success', 'Exercice clôturé.');
@@ -152,12 +157,14 @@ class AccountingController extends Controller
     // CRUD Périodes
     public function closePeriod(Request $request, AccountingPeriod $period)
     {
+        if ($period->company_id !== $this->company($request)->id) abort(403);
         $period->update(['status' => 'closed']);
         return back()->with('success', 'Période clôturée.');
     }
 
     public function reopenPeriod(Request $request, AccountingPeriod $period)
     {
+        if ($period->company_id !== $this->company($request)->id) abort(403);
         $period->update(['status' => 'open']);
         return back()->with('success', 'Période rouverte.');
     }

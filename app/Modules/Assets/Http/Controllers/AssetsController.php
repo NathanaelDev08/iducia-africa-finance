@@ -70,6 +70,7 @@ class AssetsController extends Controller
 
     public function updateAsset(Request $request, Asset $asset)
     {
+        if ($asset->company_id !== $this->company($request)->id) abort(403);
         $d = $request->validate(['code'=>'required|string|max:20','name'=>'required|string|max:255','acquisition_date'=>'required|date','acquisition_cost'=>'required|numeric|min:0','residual_value'=>'nullable|numeric|min:0','useful_life_months'=>'required|integer|min:1','status'=>'in:active,disposed']);
         $asset->update(array_merge($d, ['residual_value'=>$d['residual_value']??0]));
         return back()->with('success', 'Immobilisation mise à jour.');
@@ -77,6 +78,7 @@ class AssetsController extends Controller
 
     public function destroyAsset(Request $request, Asset $asset)
     {
+        if ($asset->company_id !== $this->company($request)->id) abort(403);
         if ($asset->depreciations()->where('status','posted')->count() > 0) return back()->with('error', 'Impossible : des amortissements sont comptabilisés.');
         $asset->delete();
         return back()->with('success', 'Immobilisation supprimée.');
@@ -91,6 +93,7 @@ class AssetsController extends Controller
 
     public function postDepreciation(Request $request, AssetDepreciation $depreciation)
     {
+        if ($depreciation->company_id !== $this->company($request)->id) abort(403);
         try { app(AssetDepreciationService::class)->postDepreciation($depreciation); return back()->with('success', 'Dotation comptabilisée.'); }
         catch (\Exception $e) { return back()->with('error', $e->getMessage()); }
     }

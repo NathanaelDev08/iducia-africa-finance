@@ -64,6 +64,7 @@ class ReferentialController extends Controller
 
     public function updateDepartment(Request $request, Department $department)
     {
+        if ($department->company_id !== $this->company($request)->id) abort(403);
         $data = $request->validate(['code' => 'required|string|max:20', 'name' => 'required|string|max:255', 'is_active' => 'boolean']);
         $department->update($data);
         return back()->with('success', 'Département mis à jour.');
@@ -71,6 +72,7 @@ class ReferentialController extends Controller
 
     public function destroyDepartment(Request $request, Department $department)
     {
+        if ($department->company_id !== $this->company($request)->id) abort(403);
         if ($department->employees()->count() > 0 || $department->positions()->count() > 0) {
             return back()->with('error', 'Impossible : ce département contient des postes ou des employés.');
         }
@@ -91,6 +93,7 @@ class ReferentialController extends Controller
 
     public function updatePosition(Request $request, Position $position)
     {
+        if ($position->company_id !== $this->company($request)->id) abort(403);
         $data = $request->validate([
             'code' => 'required|string|max:20', 'name' => 'required|string|max:255',
             'department_id' => 'nullable|exists:departments,id', 'is_active' => 'boolean',
@@ -101,6 +104,7 @@ class ReferentialController extends Controller
 
     public function destroyPosition(Request $request, Position $position)
     {
+        if ($position->company_id !== $this->company($request)->id) abort(403);
         if ($position->employees()->count() > 0) {
             return back()->with('error', 'Impossible : des employés occupent ce poste.');
         }

@@ -39,6 +39,7 @@ class HrCrudController extends Controller
 
     public function updateContract(Request $request, EmployeeContract $contract)
     {
+        if ($contract->company_id !== $this->company($request)->id) abort(403);
         $data = $request->validate([
             'contract_type_id' => 'nullable|exists:contract_types,id',
             'start_date' => 'required|date',
@@ -52,6 +53,7 @@ class HrCrudController extends Controller
 
     public function destroyContract(Request $request, EmployeeContract $contract)
     {
+        if ($contract->company_id !== $this->company($request)->id) abort(403);
         $contract->delete();
         return back()->with('success', 'Contrat supprimé.');
     }
@@ -77,18 +79,21 @@ class HrCrudController extends Controller
 
     public function approveLeave(Request $request, Leave $leave)
     {
+        if ($leave->company_id !== $this->company($request)->id) abort(403);
         $leave->update(['status' => 'approved', 'approved_by' => auth()->id(), 'approved_at' => now()]);
         return back()->with('success', 'Congé approuvé.');
     }
 
     public function rejectLeave(Request $request, Leave $leave)
     {
+        if ($leave->company_id !== $this->company($request)->id) abort(403);
         $leave->update(['status' => 'rejected', 'approved_by' => auth()->id(), 'approved_at' => now()]);
         return back()->with('success', 'Congé rejeté.');
     }
 
     public function destroyLeave(Request $request, Leave $leave)
     {
+        if ($leave->company_id !== $this->company($request)->id) abort(403);
         $leave->delete();
         return back()->with('success', 'Congé supprimé.');
     }
@@ -96,18 +101,20 @@ class HrCrudController extends Controller
     /* ===== DOCUMENTS (upload) ===== */
     public function storeDocument(Request $request)
     {
+        $company = $this->company($request);
         $data = $request->validate([
-            'employee_id' => 'required|exists:employees,id',
+            'employee_id' => ['required', \Illuminate\Validation\Rule::exists('employees', 'id')->where('company_id', $company->id)],
             'document_type' => 'required|string|max:50',
             'name' => 'required|string|max:255',
-            'file' => 'nullable|file|max:10240',
+            'file' => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx|max:10240',
             'expires_at' => 'nullable|date',
         ]);
         $path = null;
         if ($request->hasFile('file')) {
-            $path = $request->file('file')->store('documents/' . $data['employee_id'], 'public');
+            $path = $request->file('file')->store('documents/' . $company->id . '/' . $data['employee_id'], 'public');
         }
         EmployeeDocument::create([
+            'company_id' => $company->id,
             'employee_id' => $data['employee_id'],
             'document_type' => $data['document_type'],
             'name' => $data['name'],
@@ -120,6 +127,7 @@ class HrCrudController extends Controller
 
     public function destroyDocument(Request $request, EmployeeDocument $document)
     {
+        if ($document->company_id !== $this->company($request)->id) abort(403);
         $document->delete();
         return back()->with('success', 'Document supprimé.');
     }

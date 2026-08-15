@@ -10,7 +10,7 @@ class EnsureCompanyActive
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (! app()->bound('currentCompany')) {
+        if (! app()->bound('current_company')) {
             abort(403, 'Aucune entreprise active sélectionnée.');
         }
 

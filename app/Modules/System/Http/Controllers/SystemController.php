@@ -34,7 +34,7 @@ class SystemController extends Controller
         ExchangeRate::create(array_merge($d,['company_id'=>$this->company($request)->id,'is_active'=>true]));
         return back()->with('success','Taux ajouté.');
     }
-    public function destroyRate(Request $request, ExchangeRate $rate){ $rate->delete(); return back()->with('success','Taux supprimé.'); }
+    public function destroyRate(Request $request, ExchangeRate $rate){ if ($rate->company_id && $rate->company_id !== $this->company($request)->id) abort(403); $rate->delete(); return back()->with('success','Taux supprimé.'); }
 
     /* ===== NOTIFICATIONS / ALERTES ===== */
     public function notifications(Request $request)
@@ -71,7 +71,7 @@ class SystemController extends Controller
 
     public function importEmployees(Request $request)
     {
-        $request->validate(['file'=>'required|file|mimes:csv,txt']);
+        $request->validate(['file'=>'required|file|mimes:csv,txt|max:5120']);
         $company = $this->company($request);
         $handle = fopen($request->file('file')->getRealPath(), 'r');
         $header = fgetcsv($handle); // first_name,last_name,email,phone,hire_date
@@ -96,7 +96,7 @@ class SystemController extends Controller
 
     public function importJournal(Request $request)
     {
-        $request->validate(['file'=>'required|file|mimes:csv,txt']);
+        $request->validate(['file'=>'required|file|mimes:csv,txt|max:5120']);
         $company = $this->company($request);
         $handle = fopen($request->file('file')->getRealPath(), 'r');
         $header = fgetcsv($handle); // entry_date,journal_code,reference,description,account_number,debit,credit

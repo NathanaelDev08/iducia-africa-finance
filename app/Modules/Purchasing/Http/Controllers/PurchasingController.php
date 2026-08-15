@@ -75,12 +75,14 @@ class PurchasingController extends Controller
     }
     public function updateSupplier(Request $request, Supplier $supplier)
     {
+        if ($supplier->company_id !== $this->company($request)->id) abort(403);
         $data = $request->validate(['code' => ['required', 'string', 'max:20', \Illuminate\Validation\Rule::unique('suppliers')->where('company_id', $this->company($request)->id)],'name'=>'required|string|max:255','contact_name'=>'nullable|string','email'=>'nullable|email','phone'=>'nullable|string','address'=>'nullable|string','tax_number'=>'nullable|string','account_number'=>'nullable|string']);
         $supplier->update($data);
         return back()->with('success', 'Fournisseur mis à jour.');
     }
     public function destroySupplier(Request $request, Supplier $supplier)
     {
+        if ($supplier->company_id !== $this->company($request)->id) abort(403);
         if ($supplier->invoices()->count() > 0) return back()->with('error', 'Impossible : ce fournisseur a des factures.');
         $supplier->delete();
         return back()->with('success', 'Fournisseur supprimé.');
@@ -89,8 +91,9 @@ class PurchasingController extends Controller
     /* ===== ORDERS ===== */
     public function storeOrder(Request $request)
     {
+        $company = $this->company($request);
         $data = $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
+            'supplier_id' => ['required', Rule::exists('suppliers', 'id')->where('company_id', $company->id)],
             'expected_date' => 'nullable|date',
             'items' => 'required|array|min:1',
             'items.*.description' => 'required|string',
@@ -98,7 +101,6 @@ class PurchasingController extends Controller
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.tax_rate' => 'required|numeric|min:0',
         ]);
-        $company = $this->company($request);
         $order = PurchaseOrder::create([
             'company_id' => $company->id,
             'supplier_id' => $data['supplier_id'],
@@ -112,12 +114,14 @@ class PurchasingController extends Controller
     }
     public function updateOrderStatus(Request $request, PurchaseOrder $order)
     {
+        if ($order->company_id !== $this->company($request)->id) abort(403);
         $data = $request->validate(['status' => 'required|in:draft,sent,received,cancelled']);
         $order->update($data);
         return back()->with('success', 'Statut mis à jour.');
     }
     public function destroyOrder(Request $request, PurchaseOrder $order)
     {
+        if ($order->company_id !== $this->company($request)->id) abort(403);
         if ($order->status !== 'draft') return back()->with('error', 'Seuls les brouillons peuvent être supprimés.');
         $order->delete();
         return back()->with('success', 'Commande supprimée.');
@@ -148,19 +152,19 @@ class PurchasingController extends Controller
     /* ===== INVOICES ===== */
     public function storeInvoice(Request $request)
     {
+        $company = $this->company($request);
         $data = $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
+            'supplier_id' => ['required', Rule::exists('suppliers', 'id')->where('company_id', $company->id)],
             'supplier_invoice_number' => 'nullable|string',
             'invoice_date' => 'required|date',
             'due_date' => 'nullable|date',
             'items' => 'required|array|min:1',
             'items.*.description' => 'required|string',
-            'items.*.account_id' => 'nullable|exists:accounts,id',
+            'items.*.account_id' => ['nullable', Rule::exists('accounts', 'id')->where('company_id', $company->id)],
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.tax_rate' => 'required|numeric|min:0',
         ]);
-        $company = $this->company($request);
         $invoice = PurchaseInvoice::create([
             'company_id' => $company->id,
             'supplier_id' => $data['supplier_id'],
@@ -199,6 +203,7 @@ class PurchasingController extends Controller
 
     public function postInvoice(Request $request, PurchaseInvoice $invoice)
     {
+        if ($invoice->company_id !== $this->company($request)->id) abort(403);
         try {
             app(PurchasingAccountingService::class)->postInvoice($invoice);
             return back()->with('success', 'Facture comptabilisée (OD générée).');
@@ -209,6 +214,7 @@ class PurchasingController extends Controller
 
     public function destroyInvoice(Request $request, PurchaseInvoice $invoice)
     {
+        if ($invoice->company_id !== $this->company($request)->id) abort(403);
         if ($invoice->accounting_entry_id) return back()->with('error', 'Impossible : facture déjà comptabilisée.');
         if ($invoice->status !== 'draft') return back()->with('error', 'Seuls les brouillons peuvent être supprimés.');
         $invoice->delete();
@@ -218,9 +224,10 @@ class PurchasingController extends Controller
     /* ===== PAYMENTS ===== */
     public function storePayment(Request $request)
     {
+        $company = $this->company($request);
         $data = $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
-            'purchase_invoice_id' => 'nullable|exists:purchase_invoices,id',
+            'supplier_id' => ['required', Rule::exists('suppliers', 'id')->where('company_id', $company->id)],
+            'purchase_invoice_id' => ['nullable', Rule::exists('purchase_invoices', 'id')->where('company_id', $company->id)],
             'payment_date' => 'required|date',
             'payment_method' => 'required|in:bank,cash,check',
             'amount' => 'required|numeric|min:0.01',
@@ -232,7 +239,6 @@ class PurchasingController extends Controller
                 return back()->with('error', 'Montant supérieur au reste à payer (' . number_format($invoice->remainingAmount(), 0, ',', ' ') . ' FCFA).');
             }
         }
-        $company = $this->company($request);
         SupplierPayment::create([
             'company_id' => $company->id,
             'supplier_id' => $data['supplier_id'],
@@ -248,6 +254,7 @@ class PurchasingController extends Controller
 
     public function postPayment(Request $request, SupplierPayment $payment)
     {
+        if ($payment->company_id !== $this->company($request)->id) abort(403);
         try {
             app(PurchasingAccountingService::class)->postPayment($payment);
             return back()->with('success', 'Paiement comptabilisé.');
@@ -258,6 +265,7 @@ class PurchasingController extends Controller
 
     public function destroyPayment(Request $request, SupplierPayment $payment)
     {
+        if ($payment->company_id !== $this->company($request)->id) abort(403);
         if ($payment->accounting_entry_id) return back()->with('error', 'Impossible : paiement déjà comptabilisé.');
         $payment->delete();
         return back()->with('success', 'Paiement supprimé.');

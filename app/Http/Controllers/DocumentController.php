@@ -43,8 +43,9 @@ class DocumentController extends Controller
         if (!Schema::hasTable($table)) abort(404, 'Table introuvable');
 
         $inv = DB::table($table)->where('id', $id)->first();
-        if (!$inv) abort(404, 'Facture introuvable');
-        if (($inv->company_id ?? null) && $company && $inv->company_id != $company->id) abort(403);
+        if (!$inv || !$company || (int) ($inv->company_id ?? 0) !== (int) $company->id) {
+            abort(404, 'Facture introuvable');
+        }
 
         // Tiers (client ou fournisseur)
         $party = null;
@@ -130,8 +131,9 @@ class DocumentController extends Controller
         if (!Schema::hasTable($table)) abort(404, 'Table paiements introuvable');
 
         $pay = DB::table($table)->where('id', $id)->first();
-        if (!$pay) abort(404, 'Paiement introuvable');
-        if (($pay->company_id ?? null) && $company && $pay->company_id != $company->id) abort(403);
+        if (!$pay || !$company || (int) ($pay->company_id ?? 0) !== (int) $company->id) {
+            abort(404, 'Paiement introuvable');
+        }
 
         // Facture liée + tiers
         $invoiceRef = null; $partyName = null; $restant = null;
@@ -290,8 +292,9 @@ class DocumentController extends Controller
         if (!Schema::hasTable($table)) abort(404, 'Table introuvable');
 
         $o = DB::table($table)->where('id', $id)->first();
-        if (!$o) abort(404);
-        if (($o->company_id ?? null) && $company && $o->company_id != $company->id) abort(403);
+        if (!$o || !$company || (int) ($o->company_id ?? 0) !== (int) $company->id) {
+            abort(404);
+        }
 
         $party = null;
         try {

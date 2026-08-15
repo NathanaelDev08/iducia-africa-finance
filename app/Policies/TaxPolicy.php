@@ -59,6 +59,12 @@ class TaxPolicy
      */
     public function validate(User $user, VatDeclaration $declaration): bool
     {
+        $companyIds = $user->companies()->pluck('companies.id')->toArray();
+
+        if (!in_array($declaration->company_id, $companyIds)) {
+            return false;
+        }
+
         return $user->hasAnyRole([
             'super-admin',
             'admin-company',
