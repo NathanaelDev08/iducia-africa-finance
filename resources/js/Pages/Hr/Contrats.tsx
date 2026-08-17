@@ -7,7 +7,7 @@ import { useState } from 'react';
 import ViewSwitcher, { ViewMode } from '@/Components/ViewSwitcher';
 import KanbanBoard from '@/Components/KanbanBoard';
 
-interface Contract { id: number; contract_number: string | null; start_date: string; end_date: string | null; base_salary: number; status: string; employee: { first_name: string; last_name: string }; contract_type: { name: string }; }
+interface Contract { id: number; contract_number: string | null; start_date: string; end_date: string | null; base_salary: number; salaire_categoriel: number | null; sursalaire: number | null; has_cmu: boolean; has_cnps: boolean; status: string; employee: { first_name: string; last_name: string }; contract_type: { name: string }; }
 
 const formatMoney = (amount: number) => new Intl.NumberFormat('fr-FR').format(amount || 0) + ' FCFA';
 
@@ -47,13 +47,16 @@ export default function Contrats({ contracts, activeTab }: PageProps<{ contracts
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Type</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Début</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Fin</th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Salaire</th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Catégoriel</th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Sursalaire</th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Salaire base</th>
+                                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Cotisations</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Statut</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                 {contracts.length === 0 ? (
-                                    <tr><td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Aucun contrat.</td></tr>
+                                    <tr><td colSpan={9} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Aucun contrat.</td></tr>
                                 ) : (
                                     contracts.map((c) => (
                                         <tr key={c.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
@@ -61,7 +64,16 @@ export default function Contrats({ contracts, activeTab }: PageProps<{ contracts
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{c.contract_type.name}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{c.start_date}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{c.end_date || 'Indéterminé'}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-300">{c.salaire_categoriel != null ? formatMoney(c.salaire_categoriel) : '—'}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-300">{c.sursalaire != null ? formatMoney(c.sursalaire) : '—'}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500 dark:text-gray-300">{formatMoney(c.base_salary)}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                <div className="flex gap-1 justify-center">
+                                                    {c.has_cnps && <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800">CNPS</span>}
+                                                    {c.has_cmu && <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-teal-100 text-teal-800">CMU</span>}
+                                                    {!c.has_cnps && !c.has_cmu && <span className="text-xs text-gray-400">—</span>}
+                                                </div>
+                                            </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${c.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
                                                     {c.status}
@@ -94,11 +106,18 @@ export default function Contrats({ contracts, activeTab }: PageProps<{ contracts
                                     <div className="mt-2 text-xs text-gray-600">
                                         Du {c.start_date} au {c.end_date || 'Indéterminé'}
                                     </div>
-                                    <div className="mt-1 text-xs text-gray-500">{formatMoney(c.base_salary)}</div>
+                                    <div className="mt-1 text-xs text-gray-500">
+                                        {formatMoney(c.base_salary)}
+                                        {(c.salaire_categoriel != null || c.sursalaire != null) && (
+                                            <span className="text-gray-400"> (cat. {c.salaire_categoriel != null ? formatMoney(c.salaire_categoriel) : '—'} + sur. {c.sursalaire != null ? formatMoney(c.sursalaire) : '—'})</span>
+                                        )}
+                                    </div>
                                     <div className="mt-2 flex items-center gap-2 border-t border-gray-100 pt-2">
                                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${c.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
                                             {c.status}
                                         </span>
+                                        {c.has_cnps && <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800">CNPS</span>}
+                                        {c.has_cmu && <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-teal-100 text-teal-800">CMU</span>}
                                     </div>
                                 </div>
                             );

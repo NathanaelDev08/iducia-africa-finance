@@ -37,3 +37,4 @@ Artisan::command('admin:reset-password {email?} {password?}', function (?string 
 })->purpose('Réinitialiser le mot de passe d’un administrateur');
 
 Schedule::command('telemetry:snapshot')->dailyAt('02:00');
+Schedule::command('hr:check-leave-balances')->dailyAt('06:00');

@@ -1,15 +1,17 @@
 import ErpLayout from '@/Layouts/ErpLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 
 interface Employee { id:number; matricule:string; full_name:string; email:string|null; phone:string|null; sex:string|null; hire_date:string; status:string; department:{id:number;name:string}|null; position:{id:number;name:string}|null; }
 interface Department { id:number; code:string; name:string; is_active:boolean; positions_count:number; employees_count:number; }
-interface Position { id:number; code:string; name:string; is_active:boolean; department:{id:number;name:string}|null; employees_count:number; }
+interface Position { id:number; code:string; name:string; is_active:boolean; department:{id:number;name:string}|null; employees_count:number; employees:{id:number;matricule:string;full_name:string}[]; }
 interface ContractType { id:number; code:string; name:string; is_active:boolean; }
-interface Contract { id:number; contract_number:string|null; employee:{id:number;full_name:string;matricule:string}; contract_type:string; start_date:string; end_date:string|null; base_salary:number; status:string; }
+interface Contract { id:number; contract_number:string|null; employee:{id:number;full_name:string;matricule:string;dependents_count:number;children_count:number}; contract_type:string; contract_type_id:number|null; start_date:string; end_date:string|null; base_salary:number; salaire_categoriel:number|null; sursalaire:number|null; has_cmu:boolean; has_cnps:boolean; status:string; }
 interface Leave { id:number; employee:{id:number;full_name:string;matricule:string}; leave_type:string; start_date:string; end_date:string; days_count:number; status:string; }
 interface Doc { id:number; employee:{id:number;full_name:string;matricule:string}; document_type:string; name:string; file_path:string|null; expires_at:string|null; status:string; }
-interface Props { employees:Employee[]; departments:Department[]; positions:Position[]; contractTypes:ContractType[]; contracts?:Contract[]; leaves?:Leave[]; documents?:Doc[]; allEmployees:{id:number;full_name:string;matricule:string}[]; allDepartments:{id:number;name:string}[]; stats:any; initialTab:string; }
+interface AllEmployee { id:number; full_name:string; matricule:string; dependents_count:number; children_count:number; }
+interface LeaveBalance { id:number; matricule:string; full_name:string; balance:number; threshold_reached:boolean; }
+interface Props { employees:Employee[]; departments:Department[]; positions:Position[]; contractTypes:ContractType[]; contracts?:Contract[]; leaves?:Leave[]; documents?:Doc[]; allEmployees:AllEmployee[]; allDepartments:{id:number;name:string}[]; stats:any; initialTab:string; cnpsEmployeeRate:number; leaveBalances?:LeaveBalance[]; }
 
 type TabKey='employes'|'contrats'|'conges'|'documents'|'departements'|'postes'|'types';
 
@@ -47,8 +49,8 @@ export default function Index(p:Props){
         </nav></div>
         <div className="bg-white rounded-b-lg shadow-sm p-6">
           {tab==='employes'&&<EmployesTab {...p}/>}
-          {tab==='contrats'&&<ContratsTab contracts={contracts} allEmployees={p.allEmployees} contractTypes={p.contractTypes}/>}
-          {tab==='conges'&&<CongesTab leaves={leaves} allEmployees={p.allEmployees}/>}
+          {tab==='contrats'&&<ContratsTab contracts={contracts} allEmployees={p.allEmployees} contractTypes={p.contractTypes} cnpsEmployeeRate={p.cnpsEmployeeRate}/>}
+          {tab==='conges'&&<CongesTab leaves={leaves} allEmployees={p.allEmployees} leaveBalances={p.leaveBalances}/>}
           {tab==='documents'&&<DocumentsTab documents={documents} allEmployees={p.allEmployees}/>}
           {tab==='departements'&&<DepartementsTab data={p.departments}/>}
           {tab==='postes'&&<PostesTab data={p.positions} allDepartments={p.allDepartments}/>}
@@ -98,7 +100,7 @@ function EmployesTab({employees,stats,allDepartments}:any){
 }
 
 /* ===== CONTRATS (CRUD) ===== */
-function ContratsTab({contracts = [],allEmployees,contractTypes}:{contracts?:Contract[];allEmployees:any[];contractTypes:ContractType[]}){
+function ContratsTab({contracts = [],allEmployees,contractTypes,cnpsEmployeeRate}:{contracts?:Contract[];allEmployees:AllEmployee[];contractTypes:ContractType[];cnpsEmployeeRate:number}){
   const [modal,setModal]=useState<null|{mode:'create'}|{mode:'edit';item:Contract}>(null);
   const [del,setDel]=useState<Contract|null>(null);
   return (<div>
@@ -107,38 +109,72 @@ function ContratsTab({contracts = [],allEmployees,contractTypes}:{contracts?:Con
       <thead className="bg-gray-50 border-b"><tr>
         <th className="p-3 text-left text-xs text-gray-600 uppercase">N°</th><th className="p-3 text-left text-xs text-gray-600 uppercase">Employé</th>
         <th className="p-3 text-left text-xs text-gray-600 uppercase">Type</th><th className="p-3 text-left text-xs text-gray-600 uppercase">Début</th>
-        <th className="p-3 text-left text-xs text-gray-600 uppercase">Fin</th><th className="p-3 text-right text-xs text-gray-600 uppercase">Salaire</th>
+        <th className="p-3 text-left text-xs text-gray-600 uppercase">Fin</th>
+        <th className="p-3 text-right text-xs text-gray-600 uppercase">Catégoriel</th>
+        <th className="p-3 text-right text-xs text-gray-600 uppercase">Sursalaire</th>
+        <th className="p-3 text-right text-xs text-gray-600 uppercase">Salaire base</th>
+        <th className="p-3 text-center text-xs text-gray-600 uppercase">Cotisations</th>
         <th className="p-3 text-center text-xs text-gray-600 uppercase">Statut</th><th className="p-3 text-right text-xs text-gray-600 uppercase">Actions</th></tr></thead>
-      <tbody className="divide-y">{contracts.length===0?<tr><td colSpan={8} className="p-8 text-center text-gray-500">Aucun contrat.</td></tr>:contracts.map(c=>(
+      <tbody className="divide-y">{contracts.length===0?<tr><td colSpan={11} className="p-8 text-center text-gray-500">Aucun contrat.</td></tr>:contracts.map(c=>(
         <tr key={c.id} className="hover:bg-gray-50">
           <td className="p-3 font-mono text-xs">{c.contract_number||'—'}</td><td className="p-3 font-medium">{c.employee.full_name}</td>
           <td className="p-3 text-xs">{c.contract_type}</td><td className="p-3 text-xs">{new Date(c.start_date).toLocaleDateString('fr-FR')}</td>
           <td className="p-3 text-xs">{c.end_date?new Date(c.end_date).toLocaleDateString('fr-FR'):'CDI'}</td>
+          <td className="p-3 text-right font-mono text-xs">{c.salaire_categoriel!=null?formatMoney(c.salaire_categoriel):'—'}</td>
+          <td className="p-3 text-right font-mono text-xs">{c.sursalaire!=null?formatMoney(c.sursalaire):'—'}</td>
           <td className="p-3 text-right font-mono">{formatMoney(c.base_salary)}</td>
+          <td className="p-3 text-center">
+            <div className="flex gap-1 justify-center">
+              {c.has_cnps&&<span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800">CNPS</span>}
+              {c.has_cmu&&<span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-teal-100 text-teal-800">CMU</span>}
+              {!c.has_cnps&&!c.has_cmu&&<span className="text-xs text-gray-400">—</span>}
+            </div>
+          </td>
           <td className="p-3 text-center"><span className={'px-2 py-1 rounded-full text-xs font-semibold '+(c.status==='active'?'bg-green-100 text-green-800':'bg-gray-100 text-gray-700')}>{c.status}</span></td>
           <td className="p-3 text-right"><button onClick={()=>setModal({mode:'edit',item:c})} className="text-blue-600 hover:underline text-xs mr-3">✏️</button>
           <button onClick={()=>setDel(c)} className="text-red-600 hover:underline text-xs">🗑</button></td>
         </tr>))}</tbody></table></div>
-    {modal&&<ContractModal mode={modal.mode} item={modal.mode==='edit'?modal.item:undefined} allEmployees={allEmployees} contractTypes={contractTypes} onClose={()=>setModal(null)}/>}
+    {modal&&<ContractModal mode={modal.mode} item={modal.mode==='edit'?modal.item:undefined} allEmployees={allEmployees} contractTypes={contractTypes} cnpsEmployeeRate={cnpsEmployeeRate} onClose={()=>setModal(null)}/>}
     {del&&<ConfirmDelete label={'contrat '+del.employee.full_name} onClose={()=>setDel(null)} onConfirm={()=>router.delete(route('hr.contracts.destroy',del.id))}/>}
   </div>);
 }
 
-function ContractModal({mode,item,allEmployees,contractTypes,onClose}:{mode:'create'|'edit';item?:Contract;allEmployees:any[];contractTypes:ContractType[];onClose:()=>void}){
+function ContractModal({mode,item,allEmployees,contractTypes,cnpsEmployeeRate,onClose}:{mode:'create'|'edit';item?:Contract;allEmployees:AllEmployee[];contractTypes:ContractType[];cnpsEmployeeRate:number;onClose:()=>void}){
   const [employeeId,setEmployeeId]=useState('');
-  const [typeId,setTypeId]=useState('');
-  const [number,setNumber]=useState('');
-  const [start,setStart]=useState(new Date().toISOString().slice(0,10));
-  const [end,setEnd]=useState('');
-  const [salary,setSalary]=useState('0');
+  const [typeId,setTypeId]=useState(item?.contract_type_id!=null?String(item.contract_type_id):'');
+  const [number,setNumber]=useState(item?.contract_number||'');
+  const [start,setStart]=useState(item?.start_date||new Date().toISOString().slice(0,10));
+  const [end,setEnd]=useState(item?.end_date||'');
+  const [salary,setSalary]=useState(item?item.base_salary!=null?String(item.base_salary):'0':'0');
+  const [categoriel,setCategoriel]=useState(item?.salaire_categoriel!=null?String(item.salaire_categoriel):'');
+  const [hasCmu,setHasCmu]=useState(item?.has_cmu??false);
+  const [hasCnps,setHasCnps]=useState(item?.has_cnps??true);
+
+  // Sursalaire = complément versé au-delà du salaire catégoriel (grille conventionnelle).
+  // Affiché en lecture seule et recalculé en direct ; jamais négatif.
+  const baseSalaryNum = parseFloat(salary)||0;
+  const categorielNum = parseFloat(categoriel)||0;
+  const sursalaireIsNegative = categorielNum > baseSalaryNum && categoriel !== '';
+  const sursalaire = Math.max(0, baseSalaryNum - categorielNum);
+
+  // Prévisualisation CMU : 500 FCFA x (1 salarié + nombre de personnes à charge).
+  // On compte de préférence les enfants réellement enregistrés (table employee_children) ;
+  // à défaut, on retombe sur le compteur "dependents_count" de l'employé.
+  const selectedEmployee = allEmployees.find(e=>String(e.id)===String(employeeId)) || item?.employee;
+  const dependentsForCmu = selectedEmployee
+    ? (selectedEmployee.children_count>0 ? selectedEmployee.children_count : selectedEmployee.dependents_count)
+    : 0;
+  const cmuEstimate = 500 * (1 + dependentsForCmu);
+
   const submit=(e:React.FormEvent)=>{e.preventDefault();
-    const payload={employee_id:employeeId,contract_type_id:typeId||null,contract_number:number,start_date:start,end_date:end||null,base_salary:salary};
+    const payload={employee_id:employeeId,contract_type_id:typeId||null,contract_number:number,start_date:start,end_date:end||null,
+      base_salary:salary,salaire_categoriel:categoriel||null,sursalaire:String(sursalaire),has_cmu:hasCmu,has_cnps:hasCnps};
     if(mode==='create')router.post(route('hr.contracts.store'),payload,{onSuccess:onClose});
     else router.put(route('hr.contracts.update',item!.id),{...payload,employee_id:undefined},{onSuccess:onClose});};
   return (<ModalShell title={mode==='create'?'➕ Contrat':'✏️ Contrat'} onClose={onClose}><form onSubmit={submit} className="space-y-3">
     {mode==='create'&&<div><label className="block text-sm font-medium text-gray-700 mb-1">Employé *</label>
       <select value={employeeId} onChange={e=>setEmployeeId(e.target.value)} className="w-full rounded-md border-gray-300 text-sm" required>
-        <option value="">—</option>{allEmployees.map((e:any)=><option key={e.id} value={e.id}>{e.matricule} - {e.full_name}</option>)}</select></div>}
+        <option value="">—</option>{allEmployees.map((e)=><option key={e.id} value={e.id}>{e.matricule} - {e.full_name}</option>)}</select></div>}
     <div><label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
       <select value={typeId} onChange={e=>setTypeId(e.target.value)} className="w-full rounded-md border-gray-300 text-sm">
         <option value="">—</option>{contractTypes.map((t)=><option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
@@ -147,15 +183,55 @@ function ContractModal({mode,item,allEmployees,contractTypes,onClose}:{mode:'cre
       <div><label className="block text-sm font-medium text-gray-700 mb-1">Début *</label><input type="date" value={start} onChange={e=>setStart(e.target.value)} className="w-full rounded-md border-gray-300 text-sm" required/></div>
       <div><label className="block text-sm font-medium text-gray-700 mb-1">Fin</label><input type="date" value={end} onChange={e=>setEnd(e.target.value)} className="w-full rounded-md border-gray-300 text-sm"/></div>
     </div>
-    <div><label className="block text-sm font-medium text-gray-700 mb-1">Salaire de base *</label><input type="number" min="0" value={salary} onChange={e=>setSalary(e.target.value)} className="w-full rounded-md border-gray-300 text-sm" required/></div>
+    <div><label className="block text-sm font-medium text-gray-700 mb-1">Salaire de base (total) *</label><input type="number" min="0" value={salary} onChange={e=>setSalary(e.target.value)} className="w-full rounded-md border-gray-300 text-sm" required/></div>
+    <div><label className="block text-sm font-medium text-gray-700 mb-1">Salaire catégoriel</label><input type="number" min="0" value={categoriel} onChange={e=>setCategoriel(e.target.value)} className="w-full rounded-md border-gray-300 text-sm" placeholder="Selon grille conventionnelle"/></div>
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">Sursalaire (calculé)</label>
+      <input type="text" readOnly value={formatMoney(sursalaire)} className="w-full rounded-md border-gray-200 bg-gray-50 text-sm text-gray-600"/>
+      {sursalaireIsNegative&&<p className="text-xs text-yellow-600 mt-1">⚠️ Le catégoriel dépasse le salaire de base : sursalaire ramené à 0.</p>}
+    </div>
+    <div className="border-t pt-3 space-y-2">
+      <label className="flex items-center gap-2 text-sm text-gray-700">
+        <input type="checkbox" checked={hasCnps} onChange={e=>setHasCnps(e.target.checked)} className="rounded border-gray-300"/>
+        Cotisation CNPS
+        <span className="text-xs text-gray-500 ml-1">(Taux salarié actuel : {cnpsEmployeeRate}%)</span>
+      </label>
+      <label className="flex items-center gap-2 text-sm text-gray-700">
+        <input type="checkbox" checked={hasCmu} onChange={e=>setHasCmu(e.target.checked)} className="rounded border-gray-300"/>
+        Couverture Maladie Universelle (CMU)
+      </label>
+      {hasCmu&&(
+        <p className="text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded-md px-2 py-1.5">
+          Estimation CMU : 500 FCFA × (1 + {dependentsForCmu} personne(s) à charge) = <strong>{formatMoney(cmuEstimate)}</strong> / mois
+        </p>
+      )}
+    </div>
     <ModalFooter onClose={onClose}/></form></ModalShell>);
 }
 
 /* ===== CONGÉS (workflow) ===== */
-function CongesTab({leaves = [],allEmployees}:{leaves?:Leave[];allEmployees:any[]}){
+function CongesTab({leaves = [],allEmployees,leaveBalances = []}:{leaves?:Leave[];allEmployees:any[];leaveBalances?:LeaveBalance[]}){
   const [modal,setModal]=useState(false);
   const [del,setDel]=useState<Leave|null>(null);
   return (<div>
+    {leaveBalances.length>0&&<div className="mb-6">
+      <h3 className="text-sm font-semibold text-gray-700 mb-2">🗓️ Solde de congés acquis (cumul par employé)</h3>
+      <div className="overflow-x-auto border rounded-md"><table className="w-full text-sm">
+        <thead className="bg-gray-50 border-b"><tr>
+          <th className="p-3 text-left text-xs text-gray-600 uppercase">Employé</th>
+          <th className="p-3 text-center text-xs text-gray-600 uppercase">Solde acquis</th>
+          <th className="p-3 text-center text-xs text-gray-600 uppercase">Statut</th></tr></thead>
+        <tbody className="divide-y">{leaveBalances.map(b=>(
+          <tr key={b.id} className="hover:bg-gray-50">
+            <td className="p-3 font-medium">{b.full_name}<span className="text-gray-400 ml-1 font-mono text-xs">({b.matricule})</span></td>
+            <td className="p-3 text-center font-mono">{b.balance.toLocaleString('fr-FR',{maximumFractionDigits:1})} j</td>
+            <td className="p-3 text-center">
+              {b.threshold_reached
+                ? <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">✅ ≥ 30 j — à planifier</span>
+                : <span className="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">Normal</span>}
+            </td>
+          </tr>))}</tbody></table></div>
+    </div>}
     <div className="flex justify-end mb-4"><button onClick={()=>setModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 px-4 rounded-md">+ Demande de congé</button></div>
     <div className="overflow-x-auto"><table className="w-full text-sm">
       <thead className="bg-gray-50 border-b"><tr>
@@ -274,17 +350,34 @@ function DepartementsTab({data}:{data:Department[]}){
 function PostesTab({data,allDepartments}:{data:Position[];allDepartments:any[]}){
   const [modal,setModal]=useState<null|{mode:'create'}|{mode:'edit';item:Position}>(null);
   const [del,setDel]=useState<Position|null>(null);
+  const [expanded,setExpanded]=useState<number|null>(null);
   return (<div>
     <div className="flex justify-end mb-4"><button onClick={()=>setModal({mode:'create'})} className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 px-4 rounded-md">+ Ajouter</button></div>
     <table className="w-full text-sm"><thead className="bg-gray-50 border-b"><tr>
       <th className="p-3 text-left text-xs text-gray-600 uppercase">Code</th><th className="p-3 text-left text-xs text-gray-600 uppercase">Nom</th>
       <th className="p-3 text-left text-xs text-gray-600 uppercase">Département</th><th className="p-3 text-center text-xs text-gray-600 uppercase">Employés</th>
       <th className="p-3 text-right text-xs text-gray-600 uppercase">Actions</th></tr></thead>
-      <tbody className="divide-y">{data.map(p=>(<tr key={p.id} className="hover:bg-gray-50">
-        <td className="p-3 font-mono text-xs">{p.code}</td><td className="p-3 font-medium">{p.name}</td>
-        <td className="p-3 text-xs">{p.department?.name||'—'}</td><td className="p-3 text-center">{p.employees_count}</td>
-        <td className="p-3 text-right"><button onClick={()=>setModal({mode:'edit',item:p})} className="text-blue-600 hover:underline text-xs mr-3">✏️</button>
-        <button onClick={()=>setDel(p)} className="text-red-600 hover:underline text-xs">🗑</button></td></tr>))}</tbody></table>
+      <tbody className="divide-y">{data.map(p=>(<Fragment key={p.id}>
+        <tr className="hover:bg-gray-50">
+          <td className="p-3 font-mono text-xs">{p.code}</td><td className="p-3 font-medium">{p.name}</td>
+          <td className="p-3 text-xs">{p.department?.name||'—'}</td>
+          <td className="p-3 text-center">
+            <button onClick={()=>setExpanded(expanded===p.id?null:p.id)} className="text-indigo-600 hover:underline text-xs" disabled={p.employees_count===0}>
+              {p.employees_count} {p.employees_count>0&&(expanded===p.id?'▲':'▼')}
+            </button>
+          </td>
+          <td className="p-3 text-right"><button onClick={()=>setModal({mode:'edit',item:p})} className="text-blue-600 hover:underline text-xs mr-3">✏️</button>
+          <button onClick={()=>setDel(p)} className="text-red-600 hover:underline text-xs">🗑</button></td></tr>
+        {expanded===p.id&&p.employees_count>0&&(<tr key={p.id+'-detail'} className="bg-gray-50">
+          <td colSpan={5} className="p-3">
+            <ul className="flex flex-wrap gap-x-6 gap-y-1">
+              {p.employees.map(e=>(<li key={e.id} className="text-xs">
+                <Link href={route('hr.employees.show',e.id)} className="text-indigo-600 hover:underline">{e.full_name}</Link>
+                <span className="text-gray-400 ml-1 font-mono">({e.matricule})</span>
+              </li>))}
+            </ul>
+          </td></tr>)}
+      </Fragment>))}</tbody></table>
     {modal&&<PosteModal mode={modal.mode} item={modal.mode==='edit'?modal.item:undefined} allDepartments={allDepartments} onClose={()=>setModal(null)}/>}
     {del&&<ConfirmDelete label={del.name} onClose={()=>setDel(null)} onConfirm={()=>router.delete(route('hr.referentials.positions.destroy',del.id))}/>}
   </div>);
