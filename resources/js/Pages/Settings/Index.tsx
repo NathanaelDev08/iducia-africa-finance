@@ -9,7 +9,7 @@ export default function SettingsIndex(props: any) {
     const {
         company, tab, menu,
         users = [], modules = [], taxes = [], contributions = [], pay_items = [],
-        journals = [], charts = [], settings = {},
+        journals = [], charts = [], settings = {}, fiscalYears = [],
     } = props;
 
     const changeTab = (t: string) => {
@@ -71,7 +71,7 @@ export default function SettingsIndex(props: any) {
                     {tab === 'users' && <UsersSection users={users} />}
                     {tab === 'taxes' && <TaxesSection taxes={taxes} />}
                     {tab === 'payroll' && <PayrollSection contributions={contributions} payItems={pay_items} />}
-                    {tab === 'accounting' && <AccountingSection journals={journals} charts={charts} />}
+                    {tab === 'accounting' && <AccountingSection journals={journals} charts={charts} fiscalYears={fiscalYears} />}
                     {tab === 'general' && <GeneralSection settings={settings} company={company} />}
                     {['taxes','payroll','accounting','users'].includes(tab) && <SettingsCrud tab={tab} />}
                     {tab === 'user-management' && <UserManagementSection users={users} companies={[company]} modules={modules} />}
@@ -322,7 +322,27 @@ function PayrollSection({ contributions, payItems }: any) {
     );
 }
 
-function AccountingSection({ journals, charts }: any) {
+function AccountingSection({ journals, charts, fiscalYears = [] }: any) {
+    const [showFyForm, setShowFyForm] = useState(false);
+    const { data, setData, post, processing, errors, reset } = useForm({
+        name: '',
+        start_date: '',
+        end_date: '',
+    });
+
+    const submitFiscalYear = (e: any) => {
+        e.preventDefault();
+        post('/accounting/fiscal-years', {
+            onSuccess: () => { setShowFyForm(false); reset(); },
+        });
+    };
+
+    const closeFiscalYear = (fy: any) => {
+        if (confirm(`Clôturer l'exercice "${fy.name}" ? Cette action verrouille toutes ses périodes.`)) {
+            router.post(`/accounting/fiscal-years/${fy.id}/close`);
+        }
+    };
+
     const typeColors: any = {
         sale: 'bg-green-100 text-green-800',
         sales: 'bg-green-100 text-green-800',
@@ -370,6 +390,88 @@ function AccountingSection({ journals, charts }: any) {
                             </span>
                         </div>
                     ))}
+                </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                        <span className="text-2xl">📅</span>
+                        <div>
+                            <h2 className="text-lg font-semibold text-gray-800">Exercices comptables ({fiscalYears.length})</h2>
+                            <p className="text-sm text-gray-500">Créez un nouvel exercice pour démarrer une nouvelle année comptable</p>
+                        </div>
+                    </div>
+                    <button type="button" onClick={() => setShowFyForm(!showFyForm)} className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-md hover:bg-gray-800">
+                        {showFyForm ? 'Fermer' : '+ Nouvel exercice'}
+                    </button>
+                </div>
+
+                {showFyForm && (
+                    <form onSubmit={submitFiscalYear} className="p-6 grid grid-cols-1 md:grid-cols-4 gap-4 border-b border-gray-200">
+                        <div className="md:col-span-2">
+                            <label className="block mb-1 text-sm font-medium text-gray-700">Nom *</label>
+                            <input type="text" value={data.name} onChange={(e) => setData('name', e.target.value)} placeholder="Exercice 2027" required
+                                className="w-full border-gray-300 rounded-md shadow-sm text-sm" />
+                            {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name}</p>}
+                        </div>
+                        <div>
+                            <label className="block mb-1 text-sm font-medium text-gray-700">Début *</label>
+                            <input type="date" value={data.start_date} onChange={(e) => setData('start_date', e.target.value)} required
+                                className="w-full border-gray-300 rounded-md shadow-sm text-sm" />
+                            {errors.start_date && <p className="mt-1 text-xs text-red-600">{errors.start_date}</p>}
+                        </div>
+                        <div>
+                            <label className="block mb-1 text-sm font-medium text-gray-700">Fin *</label>
+                            <input type="date" value={data.end_date} onChange={(e) => setData('end_date', e.target.value)} required
+                                className="w-full border-gray-300 rounded-md shadow-sm text-sm" />
+                            {errors.end_date && <p className="mt-1 text-xs text-red-600">{errors.end_date}</p>}
+                        </div>
+                        <div className="md:col-span-4 flex justify-end">
+                            <button type="submit" disabled={processing} className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-md disabled:opacity-50">
+                                {processing ? 'Création...' : 'Créer l\'exercice (12 périodes mensuelles générées automatiquement)'}
+                            </button>
+                        </div>
+                    </form>
+                )}
+
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="text-xs text-left text-gray-500 uppercase border-b bg-gray-50">
+                            <tr>
+                                <th className="px-4 py-3">Exercice</th>
+                                <th className="px-4 py-3">Période</th>
+                                <th className="px-4 py-3">Périodes mensuelles</th>
+                                <th className="px-4 py-3">Statut</th>
+                                <th className="px-4 py-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {fiscalYears.length === 0 ? (
+                                <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500">Aucun exercice. Créez-en un avec « + Nouvel exercice ».</td></tr>
+                            ) : fiscalYears.map((fy: any) => (
+                                <tr key={fy.id} className="hover:bg-gray-50">
+                                    <td className="px-4 py-3 font-medium text-gray-900">{fy.name}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-600">
+                                        {new Date(fy.start_date).toLocaleDateString('fr-FR')} → {new Date(fy.end_date).toLocaleDateString('fr-FR')}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-gray-600">{fy.periods_count}</td>
+                                    <td className="px-4 py-3">
+                                        <span className={'rounded-full px-2 py-0.5 text-xs font-medium ' + (fy.status === 'open' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800')}>
+                                            {fy.status === 'open' ? 'Ouvert' : 'Clôturé'}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        {fy.status === 'open' ? (
+                                            <button type="button" onClick={() => closeFiscalYear(fy)} className="text-sm text-orange-600 hover:underline">Clôturer</button>
+                                        ) : (
+                                            <span className="text-xs text-gray-400">Verrouillé</span>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
