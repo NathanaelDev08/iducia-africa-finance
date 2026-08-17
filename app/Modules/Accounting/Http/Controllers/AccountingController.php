@@ -10,6 +10,7 @@ use App\Modules\Accounting\Models\Journal;
 use App\Modules\Accounting\Models\FiscalYear;
 use App\Modules\Accounting\Models\AccountingPeriod;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
@@ -98,6 +99,198 @@ class AccountingController extends Controller
         if ($account->company_id !== $this->company($request)->id) abort(403);
         $account->delete();
         return back()->with('success', 'Compte supprimé.');
+    }
+
+    /**
+     * Import du plan comptable depuis un fichier CSV.
+     *
+     * Colonnes attendues (insensibles à la casse, ordre libre si un en-tête
+     * est présent) : Numéro/number/compte, Libellé/label/name,
+     * Classe/class/class_number (optionnel), Type/type (optionnel).
+     * Si l'en-tête n'est pas reconnu, l'ordre par défaut est utilisé :
+     * numéro, libellé, classe, type.
+     */
+    public function importAccounts(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:csv,txt|max:5120',
+        ]);
+
+        $company = $this->company($request);
+        $chart = ChartAccount::firstOrCreate(
+            ['company_id' => $company->id],
+            ['name' => 'Plan SYSCOHADA', 'standard' => 'SYSCOHADA', 'is_active' => true]
+        );
+
+        $handle = fopen($request->file('file')->getRealPath(), 'r');
+        if ($handle === false) {
+            return back()->with('error', "Impossible de lire le fichier importé.");
+        }
+
+        $created = 0;
+        $updated = 0;
+        $skipped = [];
+
+        DB::beginTransaction();
+        try {
+            $firstRow = fgetcsv($handle);
+            if ($firstRow === false) {
+                fclose($handle);
+                DB::rollBack();
+                return back()->with('error', 'Le fichier CSV est vide.');
+            }
+
+            $columns = $this->mapImportColumns($firstRow);
+            $rows = [];
+            if ($columns === null) {
+                // Pas d'en-tête reconnu : la première ligne est une ligne de données.
+                $columns = ['number' => 0, 'name' => 1, 'class_number' => 2, 'type' => 3];
+                $rows[] = $firstRow;
+            }
+            while (($row = fgetcsv($handle)) !== false) {
+                $rows[] = $row;
+            }
+            fclose($handle);
+
+            $lineNumber = 1;
+            foreach ($rows as $row) {
+                $lineNumber++;
+
+                if (!is_array($row) || count(array_filter($row, fn ($v) => trim((string) $v) !== '')) === 0) {
+                    continue; // ligne vide
+                }
+
+                $number = trim((string) ($row[$columns['number']] ?? ''));
+                $name = trim((string) ($row[$columns['name']] ?? ''));
+
+                if ($number === '' || $name === '') {
+                    $skipped[] = "Ligne {$lineNumber} : numéro ou libellé manquant.";
+                    continue;
+                }
+
+                $classRaw = $columns['class_number'] !== null ? trim((string) ($row[$columns['class_number']] ?? '')) : '';
+                $classNumber = ctype_digit($classRaw) ? (int) $classRaw : null;
+                if ($classNumber === null || $classNumber < 1 || $classNumber > 9) {
+                    $firstDigit = $number[0] ?? '';
+                    if (!ctype_digit($firstDigit)) {
+                        $skipped[] = "Ligne {$lineNumber} : numéro de compte « {$number} » invalide (classe indéterminable).";
+                        continue;
+                    }
+                    $classNumber = (int) $firstDigit;
+                }
+
+                $typeRaw = $columns['type'] !== null ? trim((string) ($row[$columns['type']] ?? '')) : '';
+                $type = $typeRaw !== '' ? strtolower($typeRaw) : $this->deriveAccountType($number, $classNumber);
+
+                $existing = Account::where('company_id', $company->id)
+                    ->where('chart_account_id', $chart->id)
+                    ->where('number', $number)
+                    ->first();
+
+                $payload = [
+                    'name' => $name,
+                    'class_number' => $classNumber,
+                    'type' => $type,
+                ];
+
+                if ($existing) {
+                    $existing->update($payload);
+                    $updated++;
+                } else {
+                    Account::create(array_merge($payload, [
+                        'company_id' => $company->id,
+                        'chart_account_id' => $chart->id,
+                        'number' => $number,
+                        'is_active' => true,
+                    ]));
+                    $created++;
+                }
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            if (is_resource($handle)) {
+                fclose($handle);
+            }
+            return back()->with('error', "Échec de l'import : " . $e->getMessage());
+        }
+
+        $summary = "{$created} compte(s) créé(s), {$updated} mis à jour, " . count($skipped) . ' ignoré(s).';
+        if (!empty($skipped)) {
+            $summary .= ' Détails : ' . implode(' | ', array_slice($skipped, 0, 10));
+            if (count($skipped) > 10) {
+                $summary .= ' …';
+            }
+        }
+
+        return back()->with(empty($skipped) ? 'success' : 'info', $summary);
+    }
+
+    /**
+     * Tente d'associer les colonnes attendues à partir d'une ligne d'en-tête.
+     * Retourne null si la ligne ne ressemble pas à un en-tête reconnu.
+     */
+    private function mapImportColumns(array $headerRow): ?array
+    {
+        $aliases = [
+            'number' => ['numero', 'number', 'compte', 'num', 'no', 'n'],
+            'name' => ['libelle', 'label', 'name', 'intitule', 'nom', 'designation'],
+            'class_number' => ['classe', 'class', 'classnumber', 'classnum'],
+            'type' => ['type', 'nature'],
+        ];
+
+        $columns = ['number' => null, 'name' => null, 'class_number' => null, 'type' => null];
+
+        foreach ($headerRow as $index => $cell) {
+            $normalized = $this->normalizeHeaderCell((string) $cell);
+            foreach ($aliases as $key => $candidates) {
+                if ($columns[$key] === null && in_array($normalized, $candidates, true)) {
+                    $columns[$key] = $index;
+                }
+            }
+        }
+
+        if ($columns['number'] === null || $columns['name'] === null) {
+            return null;
+        }
+
+        return $columns;
+    }
+
+    private function normalizeHeaderCell(string $value): string
+    {
+        $value = mb_strtolower(trim($value));
+        $value = strtr($value, [
+            'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
+            'à' => 'a', 'â' => 'a', 'ô' => 'o', 'î' => 'i',
+            'ï' => 'i', 'ç' => 'c', 'ù' => 'u', 'û' => 'u',
+        ]);
+
+        return preg_replace('/[^a-z0-9]/', '', $value) ?? '';
+    }
+
+    /**
+     * Déduit le type d'un compte à partir de son numéro et de sa classe,
+     * en suivant la même convention que SyscohadaChartSeeder.
+     */
+    private function deriveAccountType(string $number, int $classNumber): string
+    {
+        return match (true) {
+            $classNumber === 1 => str_starts_with($number, '16') ? 'liability' : 'equity',
+            $classNumber === 2, $classNumber === 3 => 'asset',
+            $classNumber === 4 => (str_starts_with($number, '41') || str_starts_with($number, '443') || str_starts_with($number, '422'))
+                ? 'asset' : 'liability',
+            $classNumber === 5 => match (true) {
+                str_starts_with($number, '56') => 'liability',
+                str_starts_with($number, '57') => 'cash',
+                default => 'bank',
+            },
+            $classNumber === 6 => 'expense',
+            $classNumber === 7 => 'revenue',
+            $classNumber === 8 => 'expense',
+            default => 'asset',
+        };
     }
 
     // CRUD Journaux

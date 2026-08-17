@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import ErpLayout from '@/Layouts/ErpLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import Tabs from '@/Components/Tabs';
 import InputLabel from '@/Components/InputLabel';
@@ -16,6 +16,7 @@ interface Account { id: number; number: string; name: string; }
 
 interface EntryLine {
     account_id: number | '';
+    account_query: string;
     description: string;
     debit: number | '';
     credit: number | '';
@@ -25,6 +26,44 @@ interface Props extends PageProps {
     journals: Journal[];
     accounts: Account[];
     activeTab: string;
+}
+
+/** Devine un type de compte SYSCOHADA plausible à partir du numéro de classe (1-9), pour pré-remplir
+ *  la création rapide d'un compte non trouvé. L'utilisateur peut corriger le type ensuite depuis le Plan Comptable. */
+function guessAccountType(classNumber: number): string {
+    switch (classNumber) {
+        case 1: return 'equity';
+        case 2: return 'asset';
+        case 3: return 'asset';
+        case 4: return 'asset';
+        case 5: return 'bank';
+        case 6: return 'expense';
+        case 7: return 'revenue';
+        default: return 'asset';
+    }
+}
+
+function InlineAccountCreate({ index, number, onCreate }: { index: number; number: string; onCreate: (index: number, number: string, name: string) => void }) {
+    const [name, setName] = useState('');
+    return (
+        <div className="mt-1 flex items-center gap-1">
+            <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Libellé du nouveau compte"
+                className="flex-1 min-w-0 rounded border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 text-xs py-1"
+            />
+            <button
+                type="button"
+                disabled={!name.trim()}
+                onClick={() => onCreate(index, number, name.trim())}
+                className="whitespace-nowrap text-xs text-indigo-600 hover:text-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                Créer le compte {number} et l'utiliser
+            </button>
+        </div>
+    );
 }
 
 export default function CreateEcriture({ journals, accounts, activeTab, errors }: Props) {
@@ -37,8 +76,8 @@ export default function CreateEcriture({ journals, accounts, activeTab, errors }
     ];
 
     const initialLines: EntryLine[] = [
-        { account_id: '', description: '', debit: '', credit: '' },
-        { account_id: '', description: '', debit: '', credit: '' },
+        { account_id: '', account_query: '', description: '', debit: '', credit: '' },
+        { account_id: '', account_query: '', description: '', debit: '', credit: '' },
     ];
 
     const { data, setData, post, processing, reset } = useForm({
@@ -54,19 +93,48 @@ export default function CreateEcriture({ journals, accounts, activeTab, errors }
     const totalCredit = data.lines.reduce((sum, line) => sum + (parseFloat(String(line.credit)) || 0), 0);
     const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
 
+    const updateLineFields = (index: number, fields: Partial<EntryLine>) => {
+        setData(prev => ({
+            ...prev,
+            lines: prev.lines.map((l, i) => (i === index ? { ...l, ...fields } : l)),
+        }));
+    };
+
     const updateLine = (index: number, field: keyof EntryLine, value: any) => {
-        const newLines = [...data.lines];
-        newLines[index] = { ...newLines[index], [field]: value };
-        setData('lines', newLines);
+        updateLineFields(index, { [field]: value } as Partial<EntryLine>);
     };
 
     const addLine = () => {
-        setData('lines', [...data.lines, { account_id: '', description: '', debit: '', credit: '' }]);
+        setData('lines', [...data.lines, { account_id: '', account_query: '', description: '', debit: '', credit: '' }]);
     };
 
     const removeLine = (index: number) => {
         if (data.lines.length <= 2) return;
         setData('lines', data.lines.filter((_, i) => i !== index));
+    };
+
+    // Compte : sélection via datalist (n° ou nom) OU saisie manuelle du numéro.
+    // Si la saisie ne correspond à aucun compte existant, account_id reste vide et une création rapide est proposée.
+    const handleAccountInput = (index: number, value: string) => {
+        const trimmed = value.trim();
+        const match = accounts.find(a => `${a.number} - ${a.name}` === value || a.number === trimmed);
+        updateLineFields(index, { account_query: value, account_id: match ? match.id : '' });
+    };
+
+    const createAccountForLine = (index: number, number: string, name: string) => {
+        const classNumber = /^[1-9]/.test(number) ? parseInt(number[0], 10) : 1;
+        const type = guessAccountType(classNumber);
+        router.post(route('accounting.accounts.store'), { number, name, class_number: classNumber, type }, {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: (page: any) => {
+                const updatedAccounts = (page?.props?.accounts as Account[]) || accounts;
+                const created = updatedAccounts.find(a => a.number === number);
+                if (created) {
+                    updateLineFields(index, { account_id: created.id, account_query: `${created.number} - ${created.name}` });
+                }
+            },
+        });
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -141,6 +209,12 @@ export default function CreateEcriture({ journals, accounts, activeTab, errors }
                             </SecondaryButton>
                         </div>
 
+                        <datalist id="ecriture-accounts-list">
+                            {accounts.map(a => (
+                                <option key={a.id} value={`${a.number} - ${a.name}`} />
+                            ))}
+                        </datalist>
+
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded">
                                 <thead className="bg-gray-50 dark:bg-gray-700">
@@ -156,13 +230,22 @@ export default function CreateEcriture({ journals, accounts, activeTab, errors }
                                     {data.lines.map((line, index) => (
                                         <tr key={index}>
                                             <td className="px-3 py-2">
-                                                <SelectInput
-                                                    className="w-full"
-                                                    value={line.account_id}
-                                                    onChange={(e) => updateLine(index, 'account_id', e.target.value)}
-                                                    options={accounts.map(a => ({ value: a.id, label: `${a.number} - ${a.name}` }))}
-                                                    placeholder="Sélectionner"
+                                                <input
+                                                    type="text"
+                                                    list="ecriture-accounts-list"
+                                                    className="w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 text-sm"
+                                                    value={line.account_query}
+                                                    onChange={(e) => handleAccountInput(index, e.target.value)}
+                                                    placeholder="N° ou nom du compte"
+                                                    autoComplete="off"
                                                 />
+                                                {line.account_query.trim() !== '' && line.account_id === '' && (
+                                                    <InlineAccountCreate
+                                                        index={index}
+                                                        number={line.account_query.trim()}
+                                                        onCreate={createAccountForLine}
+                                                    />
+                                                )}
                                                 <InputError message={errors[`lines.${index}.account_id`] as string} className="mt-1 text-xs" />
                                             </td>
                                             <td className="px-3 py-2">

@@ -1,9 +1,9 @@
 import ErpLayout from '@/Layouts/ErpLayout';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import { PageProps } from '@/types';
 import Tabs from '@/Components/Tabs';
-import { FileText, BookOpen, Notebook, Scale, List } from 'lucide-react';
+import { FileText, BookOpen, Notebook, Scale, List, Upload } from 'lucide-react';
 import ViewSwitcher, { ViewMode } from '@/Components/ViewSwitcher';
 import KanbanBoard from '@/Components/KanbanBoard';
 
@@ -11,6 +11,7 @@ interface Account { id: number; number: string; name: string; class_number: numb
 
 export default function PlanComptable({ accounts, activeTab }: PageProps<{ accounts: Account[], activeTab: string }>) {
     const [view, setView] = useState<ViewMode>('list');
+    const [importOpen, setImportOpen] = useState(false);
 
     const tabs = [
         { label: 'Écritures', href: route('accounting.index'), active: activeTab === 'ecritures', icon: FileText },
@@ -24,10 +25,22 @@ export default function PlanComptable({ accounts, activeTab }: PageProps<{ accou
         <ErpLayout>
             <Head title="Plan Comptable" />
             <div className="py-2">
-                <div className="mb-6 flex items-center justify-between">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Plan Comptable SYSCOHADA</h1>
-                    <ViewSwitcher value={view} onChange={setView} />
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setImportOpen(true)}
+                            className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                        >
+                            <Upload className="h-4 w-4" /> Importer (CSV)
+                        </button>
+                        <ViewSwitcher value={view} onChange={setView} />
+                    </div>
                 </div>
+                <p className="mb-4 text-xs text-gray-500 dark:text-gray-400">
+                    Colonnes CSV attendues : <strong>Numéro</strong>, <strong>Libellé</strong>, Classe (optionnel, déduite du numéro si absente), Type (optionnel, déduit de la classe SYSCOHADA si absent).
+                </p>
                 <Tabs tabs={tabs} />
                 {view === 'list' ? (
                 <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -85,6 +98,72 @@ export default function PlanComptable({ accounts, activeTab }: PageProps<{ accou
                 />
                 )}
             </div>
+            {importOpen && <ImportAccountsModal onClose={() => setImportOpen(false)} />}
         </ErpLayout>
+    );
+}
+
+function ImportAccountsModal({ onClose }: Readonly<{ onClose: () => void }>) {
+    const [file, setFile] = useState<File | null>(null);
+    const [submitting, setSubmitting] = useState(false);
+
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!file) return;
+        const data = new FormData();
+        data.append('file', file);
+        setSubmitting(true);
+        router.post(route('accounting.accounts.import'), data, {
+            forceFormData: true,
+            onSuccess: onClose,
+            onFinish: () => setSubmitting(false),
+        });
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <button type="button" className="absolute inset-0 bg-black/50" onClick={onClose} aria-label="Fermer la fenêtre" />
+            <div className="relative z-10 w-full max-w-lg rounded-lg bg-white shadow-2xl dark:bg-gray-800">
+                <div className="border-b border-gray-200 p-5 dark:border-gray-700">
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Importer le plan comptable (CSV)</h2>
+                </div>
+                <form onSubmit={submit} className="space-y-4 p-5">
+                    <div>
+                        <label htmlFor="accounts-import-file" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Fichier CSV
+                        </label>
+                        <input
+                            id="accounts-import-file"
+                            type="file"
+                            accept=".csv,.txt"
+                            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                            className="w-full text-sm text-gray-700 dark:text-gray-300"
+                            required
+                        />
+                        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            Colonnes attendues (en-tête libre, insensible à la casse) : Numéro, Libellé, Classe (optionnel), Type (optionnel).
+                            La classe est déduite du premier chiffre du numéro si elle est absente, et le type est déduit de la classe SYSCOHADA si absent.
+                            Un compte dont le numéro existe déjà est mis à jour ; sinon il est créé.
+                        </p>
+                    </div>
+                    <div className="flex justify-end gap-3 border-t border-gray-200 pt-4 dark:border-gray-700">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
+                        >
+                            Annuler
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={!file || submitting}
+                            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                        >
+                            {submitting ? 'Import en cours…' : 'Importer'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     );
 }

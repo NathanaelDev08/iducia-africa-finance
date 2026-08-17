@@ -54,7 +54,7 @@ function EcrituresTab({data}:{data:Entry[]}){
   const [view,setView]=useState<ViewMode>('list');
 
   const validateEntry=(e:Entry)=>{
-    if(!confirm(`Valider l'écriture "${e.description}" ? Cette action est définitive.`))return;
+    if(!confirm(`Verrouiller l'écriture "${e.description}" ?\n\nUne fois verrouillée (validée), elle ne pourra plus jamais être modifiée : seule une contre-passation permettra de l'annuler. Cette action est irréversible.`))return;
     router.post(route('accounting.ecritures.validate',e.id));
   };
 
@@ -86,11 +86,11 @@ function EcrituresTab({data}:{data:Entry[]}){
           <td className="p-2 text-right font-mono">{formatMoney(e.total_credit)}</td>
           <td className="p-2 text-center">
             {e.status==='draft'&&<span className="px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Brouillon</span>}
-            {e.status==='posted'&&<span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">Validée</span>}
+            {e.status==='posted'&&<span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">🔒 Verrouillée</span>}
             {e.status==='cancelled'&&<span className="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">Contre-passée</span>}
           </td>
           <td className="p-2 text-right whitespace-nowrap">
-            {e.status==='draft'&&<button onClick={()=>validateEntry(e)} className="text-green-600 hover:underline text-xs mr-3">✓ Valider</button>}
+            {e.status==='draft'&&<button onClick={()=>validateEntry(e)} className="text-green-600 hover:underline text-xs mr-3">🔒 Verrouiller</button>}
             {e.status==='posted'&&<button onClick={()=>reverseEntry(e)} className="text-red-600 hover:underline text-xs">↩ Contre-passer</button>}
           </td>
         </tr>))}</tbody></table></div>
@@ -101,7 +101,7 @@ function EcrituresTab({data}:{data:Entry[]}){
       groupBy={(e)=>e.status}
       columns={[
         {key:'draft',label:'Brouillon',colorClass:'bg-yellow-100 text-yellow-800'},
-        {key:'posted',label:'Validée',colorClass:'bg-green-100 text-green-800'},
+        {key:'posted',label:'🔒 Verrouillée',colorClass:'bg-green-100 text-green-800'},
         {key:'cancelled',label:'Contre-passée',colorClass:'bg-gray-100 text-gray-600'},
       ]}
       emptyMessage="Aucune écriture. Créez-en une nouvelle."
@@ -117,7 +117,7 @@ function EcrituresTab({data}:{data:Entry[]}){
             <span>Crédit {formatMoney(e.total_credit)}</span>
           </div>
           <div className="mt-3 flex gap-3 border-t border-gray-100 pt-2 text-xs">
-            {e.status==='draft'&&<button onClick={()=>validateEntry(e)} className="text-green-600 hover:underline">✓ Valider</button>}
+            {e.status==='draft'&&<button onClick={()=>validateEntry(e)} className="text-green-600 hover:underline">🔒 Verrouiller</button>}
             {e.status==='posted'&&<button onClick={()=>reverseEntry(e)} className="text-red-600 hover:underline">↩ Contre-passer</button>}
           </div>
         </div>

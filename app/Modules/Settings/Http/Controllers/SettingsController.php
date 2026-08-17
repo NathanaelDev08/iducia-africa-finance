@@ -80,6 +80,10 @@ class SettingsController extends Controller
             $data['charts'] = DB::table('chart_accounts')
                 ->where('company_id', $company->id)
                 ->get();
+            $data['fiscalYears'] = \App\Modules\Accounting\Models\FiscalYear::where('company_id', $company->id)
+                ->withCount('periods')
+                ->orderByDesc('start_date')
+                ->get();
         }
 
         if ($tab === 'general') {

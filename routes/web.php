@@ -102,6 +102,7 @@ Route::middleware(['auth'])->prefix('hr')->name('hr.')->group(function () {
     Route::delete('/employees/{employee}', [\App\Modules\Hr\Http\Controllers\EmployeeController::class, 'destroy'])->name('employees.destroy');
     Route::post('/employees/{employee}/deactivate', [\App\Modules\Hr\Http\Controllers\EmployeeController::class, 'deactivate'])->name('employees.deactivate');
     Route::post('/employees/{employee}/activate', [\App\Modules\Hr\Http\Controllers\EmployeeController::class, 'activate'])->name('employees.activate');
+    Route::post('/employees/{employee}/photo', [\App\Modules\Hr\Http\Controllers\EmployeeController::class, 'storePhoto'])->name('employees.photo.store');
 });
 
 // ===== CRUD Référentiels RH =====
@@ -127,6 +128,7 @@ Route::redirect('/rh', '/hr');
 // ===== CRUD Comptabilité =====
 Route::middleware(['auth'])->prefix('accounting')->name('accounting.')->group(function () {
     Route::post('/accounts', [\App\Modules\Accounting\Http\Controllers\AccountingController::class, 'storeAccount'])->name('accounts.store');
+    Route::post('/accounts/import', [\App\Modules\Accounting\Http\Controllers\AccountingController::class, 'importAccounts'])->name('accounts.import');
     Route::put('/accounts/{account}', [\App\Modules\Accounting\Http\Controllers\AccountingController::class, 'updateAccount'])->name('accounts.update');
     Route::delete('/accounts/{account}', [\App\Modules\Accounting\Http\Controllers\AccountingController::class, 'destroyAccount'])->name('accounts.destroy');
     Route::post('/journals', [\App\Modules\Accounting\Http\Controllers\AccountingController::class, 'storeJournal'])->name('journals.store');
@@ -149,6 +151,8 @@ Route::middleware(['auth'])->prefix('hr')->name('hr.')->group(function () {
     Route::delete('/leaves/{leave}', [\App\Modules\Hr\Http\Controllers\HrCrudController::class, 'destroyLeave'])->name('leaves.destroy');
     Route::post('/documents', [\App\Modules\Hr\Http\Controllers\HrCrudController::class, 'storeDocument'])->name('documents.store');
     Route::delete('/documents/{document}', [\App\Modules\Hr\Http\Controllers\HrCrudController::class, 'destroyDocument'])->name('documents.destroy');
+    Route::post('/children', [\App\Modules\Hr\Http\Controllers\HrCrudController::class, 'storeChild'])->name('children.store');
+    Route::delete('/children/{child}', [\App\Modules\Hr\Http\Controllers\HrCrudController::class, 'destroyChild'])->name('children.destroy');
 });
 
 // ===== Module Achats =====
