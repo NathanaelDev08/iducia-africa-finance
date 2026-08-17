@@ -147,6 +147,24 @@ class Employee extends Model
         return $this->hasMany(EmployeeChild::class, 'employee_id');
     }
 
+    /**
+     * Nombre de parts fiscales pour le calcul de la RICF (barème fourni par l'entreprise) :
+     * 1 part célibataire, 2 parts marié(e), + 0,5 part par enfant à charge. Le barème officiel
+     * ne couvre pas explicitement le cas "célibataire + enfants" ; le +0,5 par enfant est
+     * extrapolé de manière identique quel que soit le statut marital.
+     */
+    public function taxParts(): float
+    {
+        $childrenCount = $this->relationLoaded('children') ? $this->children->count() : $this->children()->count();
+        if ($childrenCount === 0 && (int) $this->dependents_count > 0) {
+            $childrenCount = (int) $this->dependents_count;
+        }
+
+        $base = $this->marital_status === 'married' ? 2.0 : 1.0;
+
+        return $base + 0.5 * $childrenCount;
+    }
+
     public function getFullNameAttribute(): string
     {
         return trim($this->first_name . ' ' . $this->last_name);

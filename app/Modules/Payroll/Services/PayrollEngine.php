@@ -132,11 +132,9 @@ class PayrollEngine
         }
 
         // 3. Impôt sur salaire (ITS)
-        // Net imposable = brut - cotisations salariales. Barème simplifié de démonstration :
-        // le vrai barème progressif ivoirien doit être paramétré et validé par un fiscaliste
-        // avant toute mise en production réelle.
+        // Net imposable = brut - cotisations salariales.
         $taxableIncome = max(0, $totalEarnings - $totalDeductions);
-        $incomeTax = $this->calculateIncomeTax($taxableIncome);
+        $incomeTax = $this->calculateIncomeTax($taxableIncome, $employee);
 
         if ($incomeTax > 0) {
             $taxItem = PayItem::firstOrCreate(
@@ -166,17 +164,38 @@ class PayrollEngine
     }
 
     /**
-     * Barème simplifié de démonstration — à remplacer par le vrai barème
-     * progressif de l'ITS ivoirien, validé par un fiscaliste, avant usage réel.
+     * Barème ITS (Impôt sur les Traitements et Salaires, Côte d'Ivoire) fourni par
+     * l'entreprise. Le taux de la tranche s'applique à l'ensemble du revenu imposable
+     * (et non uniquement à la fraction dépassant le seuil de la tranche), conformément
+     * au barème transmis. L'ITS net déduit ensuite la RICF (5 500 FCFA par part fiscale,
+     * cf. Employee::taxParts()).
      */
-    protected function calculateIncomeTax(float $taxableIncome): float
+    protected function calculateIncomeTax(float $taxableIncome, Employee $employee): float
     {
-        $allowance = 150000;
+        $brackets = [
+            ['max' => 75000, 'rate' => 0.00],
+            ['max' => 240000, 'rate' => 0.16],
+            ['max' => 800000, 'rate' => 0.21],
+            ['max' => 2400000, 'rate' => 0.24],
+            ['max' => 8000000, 'rate' => 0.28],
+            ['max' => PHP_FLOAT_MAX, 'rate' => 0.32],
+        ];
 
-        if ($taxableIncome <= $allowance) {
-            return 0;
+        $rate = 0.0;
+        foreach ($brackets as $bracket) {
+            if ($taxableIncome <= $bracket['max']) {
+                $rate = $bracket['rate'];
+                break;
+            }
         }
 
-        return round(($taxableIncome - $allowance) * 0.05, 2);
+        if ($rate <= 0.0) {
+            return 0.0;
+        }
+
+        $itsBrut = $taxableIncome * $rate;
+        $ricf = 5500 * $employee->taxParts();
+
+        return round(max(0, $itsBrut - $ricf), 2);
     }
 }
